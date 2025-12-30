@@ -16,6 +16,12 @@
     <script src="https://unpkg.com/jszip@3.10.1/dist/jszip.min.js"></script>
     <!-- toGeoJSON for KML -->
     <script src="https://unpkg.com/@tmcw/togeojson@5.8.1/dist/togeojson.umd.js"></script>
+    <!-- Tax Form Definitions -->
+    <script src="tax-forms.js"></script>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
         body { font-family: 'Inter', sans-serif; }
@@ -344,6 +350,9 @@
                     <div class="px-4 py-2 mt-4 text-xs text-blue-300 uppercase tracking-wider">Pengaturan</div>
                     <a href="#" onclick="showSection('users')" class="sidebar-item flex items-center gap-3 px-6 py-3 cursor-pointer text-sm" id="nav-users">
                         <i class="fas fa-users-cog w-5"></i> Manajemen User
+                    </a>
+                    <a href="#" onclick="showSection('firebase')" class="sidebar-item flex items-center gap-3 px-6 py-3 cursor-pointer text-sm" id="nav-firebase">
+                        <i class="fas fa-cloud w-5"></i> Pengaturan Cloud
                     </a>
                     <a href="#" onclick="handleLogout()" class="sidebar-item flex items-center gap-3 px-6 py-3 cursor-pointer text-sm text-red-300 hover:text-red-200">
                         <i class="fas fa-sign-out-alt w-5"></i> Logout
@@ -856,6 +865,169 @@
                     </div>
                 </section>
 
+                <!-- Firebase/Cloud Section -->
+                <section id="section-firebase" class="p-8 hidden animate-fade-in">
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <!-- Firebase Configuration -->
+                        <div class="bg-white rounded-xl shadow-sm p-6">
+                            <div class="border-b pb-4 mb-6">
+                                <h3 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                                    <i class="fas fa-cloud text-blue-600"></i> Konfigurasi Firebase
+                                </h3>
+                                <p class="text-sm text-gray-500 mt-1">Hubungkan aplikasi dengan Firebase Realtime Database untuk penyimpanan online</p>
+                            </div>
+                            
+                            <div id="firebaseStatus" class="mb-6 p-4 rounded-lg bg-gray-100">
+                                <div class="flex items-center gap-3">
+                                    <div id="statusIcon" class="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center">
+                                        <i class="fas fa-cloud-upload-alt text-gray-500"></i>
+                                    </div>
+                                    <div>
+                                        <p class="font-medium" id="statusText">Belum Terhubung</p>
+                                        <p class="text-sm text-gray-500" id="statusDesc">Konfigurasi Firebase untuk menyimpan data secara online</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <form id="firebaseConfigForm" onsubmit="saveFirebaseConfig(event)">
+                                <div class="mb-4">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">API Key <span class="text-red-500">*</span></label>
+                                    <input type="text" id="fbApiKey" required placeholder="AIzaSy..."
+                                        class="w-full px-4 py-2 border rounded-lg font-mono text-sm">
+                                </div>
+                                <div class="mb-4">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Auth Domain <span class="text-red-500">*</span></label>
+                                    <input type="text" id="fbAuthDomain" required placeholder="your-project.firebaseapp.com"
+                                        class="w-full px-4 py-2 border rounded-lg font-mono text-sm">
+                                </div>
+                                <div class="mb-4">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Database URL <span class="text-red-500">*</span></label>
+                                    <input type="text" id="fbDatabaseURL" required placeholder="https://your-project-default-rtdb.firebaseio.com"
+                                        class="w-full px-4 py-2 border rounded-lg font-mono text-sm">
+                                </div>
+                                <div class="mb-4">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Project ID <span class="text-red-500">*</span></label>
+                                    <input type="text" id="fbProjectId" required placeholder="your-project-id"
+                                        class="w-full px-4 py-2 border rounded-lg font-mono text-sm">
+                                </div>
+                                <div class="mb-4">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Storage Bucket</label>
+                                    <input type="text" id="fbStorageBucket" placeholder="your-project.appspot.com"
+                                        class="w-full px-4 py-2 border rounded-lg font-mono text-sm">
+                                </div>
+                                <div class="mb-6">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">App ID <span class="text-red-500">*</span></label>
+                                    <input type="text" id="fbAppId" required placeholder="1:123456789:web:abc123"
+                                        class="w-full px-4 py-2 border rounded-lg font-mono text-sm">
+                                </div>
+                                
+                                <div class="flex gap-2">
+                                    <button type="submit" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2">
+                                        <i class="fas fa-plug"></i> Hubungkan
+                                    </button>
+                                    <button type="button" onclick="disconnectFirebase()" class="px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200">
+                                        <i class="fas fa-unlink"></i>
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                        
+                        <!-- Sync & Backup -->
+                        <div class="space-y-6">
+                            <!-- Sync Status -->
+                            <div class="bg-white rounded-xl shadow-sm p-6">
+                                <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                                    <i class="fas fa-sync text-green-600"></i> Sinkronisasi Data
+                                </h3>
+                                
+                                <div class="grid grid-cols-2 gap-4 mb-6">
+                                    <div class="p-4 bg-blue-50 rounded-lg text-center">
+                                        <p class="text-sm text-gray-600">Data Lokal</p>
+                                        <p class="text-2xl font-bold text-blue-700" id="localDataCount">0</p>
+                                        <p class="text-xs text-gray-500">Wajib Pajak</p>
+                                    </div>
+                                    <div class="p-4 bg-green-50 rounded-lg text-center">
+                                        <p class="text-sm text-gray-600">Data Cloud</p>
+                                        <p class="text-2xl font-bold text-green-700" id="cloudDataCount">-</p>
+                                        <p class="text-xs text-gray-500">Wajib Pajak</p>
+                                    </div>
+                                </div>
+                                
+                                <div class="space-y-2">
+                                    <button onclick="uploadToCloud()" class="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2" id="btnUpload">
+                                        <i class="fas fa-cloud-upload-alt"></i> Upload ke Cloud
+                                    </button>
+                                    <button onclick="downloadFromCloud()" class="w-full px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center justify-center gap-2" id="btnDownload">
+                                        <i class="fas fa-cloud-download-alt"></i> Download dari Cloud
+                                    </button>
+                                    <button onclick="syncData()" class="w-full px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center justify-center gap-2" id="btnSync">
+                                        <i class="fas fa-sync-alt"></i> Sinkronkan (2 Arah)
+                                    </button>
+                                </div>
+                                
+                                <div id="syncLog" class="mt-4 max-h-32 overflow-y-auto text-xs font-mono bg-gray-900 text-green-400 p-3 rounded-lg hidden">
+                                    <!-- Sync logs -->
+                                </div>
+                            </div>
+                            
+                            <!-- Auto Sync Settings -->
+                            <div class="bg-white rounded-xl shadow-sm p-6">
+                                <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                                    <i class="fas fa-cog text-gray-600"></i> Pengaturan Auto-Sync
+                                </h3>
+                                
+                                <div class="space-y-4">
+                                    <div class="flex items-center justify-between">
+                                        <div>
+                                            <p class="font-medium">Auto-Sync Saat Simpan</p>
+                                            <p class="text-xs text-gray-500">Otomatis upload saat menyimpan data baru</p>
+                                        </div>
+                                        <label class="relative inline-flex items-center cursor-pointer">
+                                            <input type="checkbox" id="autoSyncSave" class="sr-only peer" onchange="saveAutoSyncSettings()">
+                                            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                        </label>
+                                    </div>
+                                    
+                                    <div class="flex items-center justify-between">
+                                        <div>
+                                            <p class="font-medium">Real-time Sync</p>
+                                            <p class="text-xs text-gray-500">Sinkronisasi real-time dengan database</p>
+                                        </div>
+                                        <label class="relative inline-flex items-center cursor-pointer">
+                                            <input type="checkbox" id="realtimeSync" class="sr-only peer" onchange="toggleRealtimeSync()">
+                                            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Instructions -->
+                            <div class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-200">
+                                <h3 class="text-lg font-semibold text-blue-800 mb-3 flex items-center gap-2">
+                                    <i class="fas fa-info-circle"></i> Cara Mendapatkan Konfigurasi Firebase
+                                </h3>
+                                <ol class="text-sm text-gray-700 space-y-2 list-decimal list-inside">
+                                    <li>Buka <a href="https://console.firebase.google.com" target="_blank" class="text-blue-600 underline">Firebase Console</a></li>
+                                    <li>Buat project baru atau pilih project yang ada</li>
+                                    <li>Klik ikon gear ⚙️ → Project Settings</li>
+                                    <li>Scroll ke bawah, klik "Add app" → Web</li>
+                                    <li>Copy konfigurasi yang muncul</li>
+                                    <li>Buka "Realtime Database" → Create Database</li>
+                                    <li>Pilih "Start in test mode" (untuk testing)</li>
+                                    <li>Paste konfigurasi di form sebelah kiri</li>
+                                </ol>
+                                
+                                <div class="mt-4 p-3 bg-yellow-100 rounded-lg border border-yellow-300">
+                                    <p class="text-xs text-yellow-800">
+                                        <i class="fas fa-exclamation-triangle mr-1"></i>
+                                        <strong>Penting:</strong> Untuk produksi, atur Firebase Security Rules agar data aman.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
                 <!-- Data Section -->
                 <section id="section-data" class="p-8 hidden animate-fade-in">
                     <div class="bg-white rounded-xl shadow-sm p-6">
@@ -1009,6 +1181,12 @@
     </div>
 
     <script>
+        // ============= FIREBASE VARIABLES =============
+        let firebaseApp = null;
+        let firebaseDB = null;
+        let firebaseConnected = false;
+        let realtimeListener = null;
+        
         // ============= GLOBAL VARIABLES =============
         const defaultUsers = [
             { id: 1, username: 'admin', password: 'admin123', name: 'Administrator', role: 'Admin', email: 'admin@sidrap.go.id', status: 'active', createdAt: '2024-01-01' },
@@ -1057,6 +1235,9 @@
         // ============= INITIALIZATION =============
         document.addEventListener('DOMContentLoaded', function() {
             checkLoginStatus();
+            loadFirebaseConfig();
+            loadAutoSyncSettings();
+            updateLocalDataCount();
         });
 
         function checkLoginStatus() {
@@ -1122,7 +1303,7 @@
             document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('active'));
             document.getElementById(`nav-${section}`)?.classList.add('active');
             
-            const titles = { dashboard: 'Dashboard', input: 'Input Wajib Pajak', data: 'Data Wajib Pajak', users: 'Manajemen User', petablok: 'Peta Blok' };
+            const titles = { dashboard: 'Dashboard', input: 'Input Wajib Pajak', data: 'Data Wajib Pajak', users: 'Manajemen User', petablok: 'Peta Blok', firebase: 'Pengaturan Cloud Storage' };
             document.getElementById('page-title').textContent = titles[section] || 'Dashboard';
             
             if (section === 'input') generateNPWPD();
@@ -1130,6 +1311,7 @@
             if (section === 'dashboard') updateDashboard();
             if (section === 'users') renderUserTable();
             if (section === 'petablok') initBlockMap();
+            if (section === 'firebase') updateCloudStatus();
         }
 
         // ============= PETA BLOK FUNCTIONS =============
@@ -1554,10 +1736,13 @@
             
             container.classList.remove('hidden');
             
+            // Get form definition from tax-forms.js or use PBB inline
             let specificFields = '';
             
-            // PBB-P2 specific fields
-            if (taxType === 'pbb') {
+            if (typeof taxFormDefinitions !== 'undefined' && taxFormDefinitions[taxType]) {
+                specificFields = taxFormDefinitions[taxType];
+            } else if (taxType === 'pbb') {
+                // PBB-P2 specific fields (fallback)
                 specificFields = `
                     <!-- Data Objek Pajak PBB-P2 -->
                     <div class="mb-6 p-4 bg-indigo-50 rounded-lg border border-indigo-200">
@@ -1713,13 +1898,8 @@
                 `;
             }
             
-            container.innerHTML = `
-                <h4 class="text-md font-semibold text-gray-700 mb-4">
-                    <i class="fas ${taxTypes[taxType]?.icon || 'fa-info-circle'} text-blue-600 mr-2"></i>
-                    Data Khusus ${taxTypes[taxType]?.name || 'Pajak'}
-                </h4>
-                ${specificFields}
-                <!-- Koordinat Lokasi -->
+            // Get koordinat section
+            const koordinatHtml = typeof koordinatSection !== 'undefined' ? koordinatSection : `
                 <div class="p-4 bg-gray-50 rounded-lg border">
                     <h5 class="text-sm font-semibold text-gray-700 mb-4 flex items-center gap-2">
                         <i class="fas fa-map-marker-alt text-red-500"></i> Koordinat Lokasi Objek Pajak
@@ -1740,6 +1920,15 @@
                         </div>
                     </div>
                 </div>
+            `;
+            
+            container.innerHTML = `
+                <h4 class="text-md font-semibold text-gray-700 mb-4">
+                    <i class="fas ${taxTypes[taxType]?.icon || 'fa-info-circle'} text-blue-600 mr-2"></i>
+                    Data Khusus ${taxTypes[taxType]?.name || 'Pajak'}
+                </h4>
+                ${specificFields}
+                ${koordinatHtml}
             `;
         }
         
@@ -1840,6 +2029,210 @@
             if (totalEl) totalEl.textContent = 'Rp ' + new Intl.NumberFormat('id-ID').format(totalNJOP);
         }
 
+        // ============= BPHTB FUNCTIONS =============
+        // Fungsi untuk mengecek riwayat perolehan berdasarkan NIK
+        function cekRiwayatPerolehanNIK() {
+            const nikPenerima = document.getElementById('tax_nik_penerima')?.value;
+            const hasilContainer = document.getElementById('hasil_cek_nik');
+            const statusContainer = document.getElementById('status_perolehan_container');
+            const perolehanKeField = document.getElementById('tax_perolehan_ke');
+            
+            if (!nikPenerima || nikPenerima.length < 16) {
+                alert('Masukkan NIK 16 digit dengan benar!');
+                return;
+            }
+            
+            // Cek apakah NIK sudah pernah melakukan transaksi BPHTB sebelumnya
+            const riwayatBPHTB = wajibPajakData.filter(wp => 
+                wp.jenisPajak === 'bphtb' && 
+                (wp.taxDetails?.nik_penerima === nikPenerima || wp.nikNpwp === nikPenerima)
+            );
+            
+            hasilContainer.classList.remove('hidden');
+            
+            if (riwayatBPHTB.length === 0) {
+                // Belum pernah ada perolehan - PEROLEHAN PERTAMA
+                hasilContainer.className = 'mt-4 p-3 rounded-lg bg-green-100 border border-green-300';
+                hasilContainer.innerHTML = `
+                    <div class="flex items-start gap-3">
+                        <div class="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center text-white flex-shrink-0">
+                            <i class="fas fa-check"></i>
+                        </div>
+                        <div>
+                            <p class="font-semibold text-green-800">✓ Perolehan Pertama</p>
+                            <p class="text-sm text-green-700 mt-1">NIK <span class="font-mono font-bold">${nikPenerima}</span> belum pernah tercatat melakukan perolehan hak atas tanah dan/atau bangunan.</p>
+                            <p class="text-sm text-green-600 mt-2"><i class="fas fa-info-circle mr-1"></i> Berhak mendapat NPOPTKP Rp 80.000.000 (untuk perolehan selain waris)</p>
+                        </div>
+                    </div>
+                `;
+                
+                statusContainer.className = 'px-4 py-2 border rounded-lg bg-green-100 text-green-700 text-sm font-semibold';
+                statusContainer.innerHTML = '<i class="fas fa-check-circle mr-1"></i> Perolehan Pertama';
+                
+                // Set otomatis ke perolehan pertama
+                if (perolehanKeField) {
+                    perolehanKeField.value = '1';
+                    perolehanKeField.classList.remove('bg-gray-100', 'bg-red-100');
+                    perolehanKeField.classList.add('bg-green-100');
+                }
+                
+            } else {
+                // Sudah pernah ada perolehan - PEROLEHAN KEDUA ATAU LEBIH
+                const jumlahPerolehan = riwayatBPHTB.length;
+                
+                const jenisPerolehanLabels = {
+                    jual_beli: 'Jual Beli',
+                    tukar_menukar: 'Tukar Menukar',
+                    hibah: 'Hibah',
+                    hibah_wasiat: 'Hibah Wasiat',
+                    waris: 'Waris',
+                    pemasukan_modal: 'Pemasukan Modal',
+                    pemisahan_hak: 'Pemisahan Hak',
+                    penggabungan_usaha: 'Penggabungan Usaha',
+                    peleburan_usaha: 'Peleburan Usaha',
+                    hadiah: 'Hadiah',
+                    lelang: 'Lelang',
+                    pemberian_hak_baru: 'Pemberian Hak Baru'
+                };
+                
+                hasilContainer.className = 'mt-4 p-3 rounded-lg bg-red-100 border border-red-300';
+                hasilContainer.innerHTML = `
+                    <div class="flex items-start gap-3">
+                        <div class="w-10 h-10 bg-red-500 rounded-full flex items-center justify-center text-white flex-shrink-0">
+                            <i class="fas fa-exclamation"></i>
+                        </div>
+                        <div class="flex-1">
+                            <p class="font-semibold text-red-800">✗ Perolehan Ke-${jumlahPerolehan + 1}</p>
+                            <p class="text-sm text-red-700 mt-1">NIK <span class="font-mono font-bold">${nikPenerima}</span> sudah tercatat <strong>${jumlahPerolehan} kali</strong> melakukan perolehan hak atas tanah dan/atau bangunan.</p>
+                            <p class="text-sm text-red-600 mt-2"><i class="fas fa-exclamation-triangle mr-1"></i> <strong>Tidak berhak</strong> mendapat NPOPTKP Rp 80.000.000 (selain waris)</p>
+                            
+                            <div class="mt-3 p-2 bg-white rounded border">
+                                <p class="text-xs font-semibold text-gray-700 mb-2">Riwayat Perolehan:</p>
+                                <div class="max-h-32 overflow-y-auto">
+                                    <table class="w-full text-xs">
+                                        <thead class="bg-gray-50">
+                                            <tr>
+                                                <th class="px-2 py-1 text-left">No</th>
+                                                <th class="px-2 py-1 text-left">Tanggal</th>
+                                                <th class="px-2 py-1 text-left">Jenis</th>
+                                                <th class="px-2 py-1 text-left">Lokasi</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            ${riwayatBPHTB.map((r, i) => `
+                                                <tr class="border-b">
+                                                    <td class="px-2 py-1">${i + 1}</td>
+                                                    <td class="px-2 py-1">${new Date(r.createdAt).toLocaleDateString('id-ID')}</td>
+                                                    <td class="px-2 py-1">${jenisPerolehanLabels[r.taxDetails?.jenis_perolehan] || r.taxDetails?.jenis_perolehan || '-'}</td>
+                                                    <td class="px-2 py-1">${r.kelurahan}, ${r.kecamatan}</td>
+                                                </tr>
+                                            `).join('')}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                statusContainer.className = 'px-4 py-2 border rounded-lg bg-red-100 text-red-700 text-sm font-semibold';
+                statusContainer.innerHTML = `<i class="fas fa-times-circle mr-1"></i> Perolehan Ke-${jumlahPerolehan + 1}`;
+                
+                // Set otomatis ke perolehan kedua atau lebih
+                if (perolehanKeField) {
+                    perolehanKeField.value = '2';
+                    perolehanKeField.classList.remove('bg-gray-100', 'bg-green-100');
+                    perolehanKeField.classList.add('bg-red-100');
+                }
+            }
+            
+            // Update NPOPTKP
+            updateNPOPTKP();
+        }
+
+        // Fungsi untuk update NPOPTKP berdasarkan jenis perolehan dan perolehan ke-
+        function updateNPOPTKP() {
+            const jenisPerolehan = document.getElementById('tax_jenis_perolehan')?.value;
+            const perolehanKe = document.getElementById('tax_perolehan_ke')?.value;
+            
+            const npoptkpField = document.getElementById('tax_npoptkp');
+            const keteranganField = document.getElementById('tax_npoptkp_keterangan');
+            
+            if (!npoptkpField) return;
+            
+            let npoptkpValue = 0;
+            let keterangan = '';
+            
+            if (jenisPerolehan === 'waris') {
+                // Perolehan karena WARIS = Rp 300.000.000 (berlaku untuk semua perolehan waris)
+                npoptkpValue = 300000000;
+                keterangan = 'Perolehan karena Waris';
+            } else if (jenisPerolehan && perolehanKe === '1') {
+                // Perolehan PERTAMA selain waris = Rp 80.000.000
+                npoptkpValue = 80000000;
+                keterangan = 'Perolehan Pertama (Selain Waris)';
+            } else if (jenisPerolehan && perolehanKe === '2') {
+                // Perolehan KEDUA atau lebih selain waris = Rp 0 (tidak ada NPOPTKP)
+                npoptkpValue = 0;
+                keterangan = 'Perolehan Kedua/Lebih (Tidak Ada NPOPTKP)';
+            } else {
+                // Default untuk perolehan pertama
+                npoptkpValue = 80000000;
+                keterangan = 'Perolehan Pertama (Selain Waris)';
+            }
+            
+            npoptkpField.value = new Intl.NumberFormat('id-ID').format(npoptkpValue);
+            
+            // Update warna background berdasarkan nilai NPOPTKP
+            npoptkpField.classList.remove('bg-indigo-100', 'bg-green-100', 'bg-red-100', 'bg-gray-100', 'text-indigo-800', 'text-green-800', 'text-red-800');
+            
+            if (npoptkpValue === 300000000) {
+                npoptkpField.classList.add('bg-green-100', 'text-green-800');
+            } else if (npoptkpValue === 0) {
+                npoptkpField.classList.add('bg-red-100', 'text-red-800');
+            } else {
+                npoptkpField.classList.add('bg-indigo-100', 'text-indigo-800');
+            }
+            
+            if (keteranganField) keteranganField.value = keterangan;
+            
+            // Hitung ulang BPHTB
+            hitungBPHTB();
+        }
+
+        // Fungsi untuk menghitung BPHTB
+        function hitungBPHTB() {
+            const npop = parseRupiah(document.getElementById('tax_npop')?.value);
+            const jenisPerolehan = document.getElementById('tax_jenis_perolehan')?.value;
+            const perolehanKe = document.getElementById('tax_perolehan_ke')?.value;
+            
+            // Hitung NPOPTKP berdasarkan jenis perolehan dan perolehan ke-
+            let npoptkp = 0;
+            
+            if (jenisPerolehan === 'waris') {
+                // Perolehan karena WARIS = Rp 300.000.000 (berlaku untuk semua)
+                npoptkp = 300000000;
+            } else if (jenisPerolehan && perolehanKe === '1') {
+                // Perolehan PERTAMA selain waris = Rp 80.000.000
+                npoptkp = 80000000;
+            } else if (jenisPerolehan && perolehanKe === '2') {
+                // Perolehan KEDUA atau lebih selain waris = Rp 0 (tidak ada NPOPTKP)
+                npoptkp = 0;
+            } else {
+                // Default untuk perolehan pertama
+                npoptkp = 80000000;
+            }
+            
+            const npopKenaPajak = Math.max(0, npop - npoptkp);
+            const bphtb = npopKenaPajak * 0.05; // 5%
+            
+            const kenaPajakField = document.getElementById('tax_npop_kena_pajak');
+            const bphtbField = document.getElementById('tax_bphtb_terutang');
+            
+            if (kenaPajakField) kenaPajakField.value = 'Rp ' + new Intl.NumberFormat('id-ID').format(npopKenaPajak);
+            if (bphtbField) bphtbField.value = 'Rp ' + new Intl.NumberFormat('id-ID').format(bphtb);
+        }
+
         function saveWajibPajak(event) {
             event.preventDefault();
             
@@ -1850,25 +2243,29 @@
                 longitude: document.getElementById('tax_longitude')?.value || ''
             };
             
-            // PBB-P2 specific data
+            // Collect all tax-specific fields dynamically
+            const taxContainer = document.getElementById('taxFieldsContainer');
+            const inputs = taxContainer.querySelectorAll('input, select, textarea');
+            inputs.forEach(input => {
+                if (input.id && input.id.startsWith('tax_') && input.id !== 'tax_latitude' && input.id !== 'tax_longitude') {
+                    const key = input.id.replace('tax_', '');
+                    if (input.type === 'checkbox') {
+                        taxDetails[key] = input.checked;
+                    } else if (input.value) {
+                        // Parse rupiah fields
+                        if (input.classList.contains('rupiah') || input.id.includes('njop') || input.id.includes('harga') || input.id.includes('tarif') || input.id.includes('nilai') || input.id.includes('omzet') || input.id.includes('biaya')) {
+                            taxDetails[key] = parseRupiah(input.value);
+                        } else {
+                            taxDetails[key] = input.value;
+                        }
+                    }
+                }
+            });
+            
+            // PBB-P2 specific data (legacy support)
             if (jenisPajak === 'pbb') {
-                taxDetails = {
-                    ...taxDetails,
-                    nop: document.getElementById('tax_nop')?.value || '',
-                    peruntukan: document.getElementById('tax_peruntukan')?.value || '',
-                    panjangTanah: document.getElementById('tax_panjang_tanah')?.value || '',
-                    lebarTanah: document.getElementById('tax_lebar_tanah')?.value || '',
-                    luasTanah: document.getElementById('tax_luas_tanah')?.value || '',
-                    njopTanah: parseRupiah(document.getElementById('tax_njop_tanah')?.value),
-                    panjangBangunan: document.getElementById('tax_panjang_bangunan')?.value || '',
-                    lebarBangunan: document.getElementById('tax_lebar_bangunan')?.value || '',
-                    luasBangunan: document.getElementById('tax_luas_bangunan')?.value || '',
-                    njopBangunan: parseRupiah(document.getElementById('tax_njop_bangunan')?.value),
-                    jumlahLantai: document.getElementById('tax_jumlah_lantai')?.value || '',
-                    tahunDibangun: document.getElementById('tax_tahun_dibangun')?.value || '',
-                    kondisiBangunan: document.getElementById('tax_kondisi_bangunan')?.value || '',
-                    jenisKonstruksi: document.getElementById('tax_jenis_konstruksi')?.value || ''
-                };
+                taxDetails.njopTanah = parseRupiah(document.getElementById('tax_njop_tanah')?.value);
+                taxDetails.njopBangunan = parseRupiah(document.getElementById('tax_njop_bangunan')?.value);
             }
             
             const wpData = {
@@ -1892,6 +2289,10 @@
             
             wajibPajakData.push(wpData);
             localStorage.setItem('wajibPajakData', JSON.stringify(wajibPajakData));
+            
+            // Auto sync to cloud if enabled
+            autoSyncAfterSave();
+            updateLocalDataCount();
             
             showToast('Data wajib pajak berhasil disimpan!');
             resetForm();
@@ -2328,6 +2729,454 @@
                 }
             });
         });
+
+        // ============= FIREBASE FUNCTIONS =============
+        function loadFirebaseConfig() {
+            const config = JSON.parse(localStorage.getItem('firebaseConfig'));
+            if (config) {
+                document.getElementById('fbApiKey').value = config.apiKey || '';
+                document.getElementById('fbAuthDomain').value = config.authDomain || '';
+                document.getElementById('fbDatabaseURL').value = config.databaseURL || '';
+                document.getElementById('fbProjectId').value = config.projectId || '';
+                document.getElementById('fbStorageBucket').value = config.storageBucket || '';
+                document.getElementById('fbAppId').value = config.appId || '';
+                
+                // Auto connect if config exists
+                initFirebase(config);
+            }
+        }
+
+        function saveFirebaseConfig(event) {
+            event.preventDefault();
+            
+            const config = {
+                apiKey: document.getElementById('fbApiKey').value,
+                authDomain: document.getElementById('fbAuthDomain').value,
+                databaseURL: document.getElementById('fbDatabaseURL').value,
+                projectId: document.getElementById('fbProjectId').value,
+                storageBucket: document.getElementById('fbStorageBucket').value,
+                appId: document.getElementById('fbAppId').value
+            };
+            
+            localStorage.setItem('firebaseConfig', JSON.stringify(config));
+            initFirebase(config);
+        }
+
+        function initFirebase(config) {
+            try {
+                // Check if Firebase is already initialized
+                if (firebaseApp) {
+                    firebaseApp.delete().then(() => {
+                        connectToFirebase(config);
+                    });
+                } else {
+                    connectToFirebase(config);
+                }
+            } catch (error) {
+                console.error('Firebase init error:', error);
+                updateFirebaseStatus(false, error.message);
+            }
+        }
+
+        function connectToFirebase(config) {
+            try {
+                firebaseApp = firebase.initializeApp(config);
+                firebaseDB = firebase.database();
+                
+                // Test connection
+                firebaseDB.ref('.info/connected').on('value', (snapshot) => {
+                    if (snapshot.val() === true) {
+                        firebaseConnected = true;
+                        updateFirebaseStatus(true);
+                        updateCloudDataCount();
+                        addSyncLog('✓ Terhubung ke Firebase');
+                        
+                        // Enable realtime if set
+                        if (document.getElementById('realtimeSync')?.checked) {
+                            enableRealtimeSync();
+                        }
+                    } else {
+                        firebaseConnected = false;
+                        updateFirebaseStatus(false, 'Koneksi terputus');
+                    }
+                });
+                
+            } catch (error) {
+                console.error('Firebase connection error:', error);
+                updateFirebaseStatus(false, error.message);
+            }
+        }
+
+        function disconnectFirebase() {
+            if (confirm('Putuskan koneksi Firebase?')) {
+                if (realtimeListener) {
+                    firebaseDB.ref('wajibPajak').off('value', realtimeListener);
+                    realtimeListener = null;
+                }
+                
+                if (firebaseApp) {
+                    firebaseApp.delete();
+                    firebaseApp = null;
+                    firebaseDB = null;
+                }
+                
+                firebaseConnected = false;
+                localStorage.removeItem('firebaseConfig');
+                
+                document.getElementById('firebaseConfigForm').reset();
+                updateFirebaseStatus(false);
+                document.getElementById('cloudDataCount').textContent = '-';
+                
+                addSyncLog('✗ Koneksi Firebase diputus');
+                showToast('Koneksi Firebase diputus');
+            }
+        }
+
+        function updateFirebaseStatus(connected, error = null) {
+            const statusDiv = document.getElementById('firebaseStatus');
+            const statusIcon = document.getElementById('statusIcon');
+            const statusText = document.getElementById('statusText');
+            const statusDesc = document.getElementById('statusDesc');
+            
+            if (connected) {
+                statusDiv.className = 'mb-6 p-4 rounded-lg bg-green-100 border border-green-300';
+                statusIcon.className = 'w-10 h-10 bg-green-500 rounded-full flex items-center justify-center';
+                statusIcon.innerHTML = '<i class="fas fa-check text-white"></i>';
+                statusText.textContent = 'Terhubung';
+                statusText.className = 'font-medium text-green-800';
+                statusDesc.textContent = 'Firebase Realtime Database aktif';
+                statusDesc.className = 'text-sm text-green-600';
+            } else {
+                statusDiv.className = 'mb-6 p-4 rounded-lg bg-red-100 border border-red-300';
+                statusIcon.className = 'w-10 h-10 bg-red-500 rounded-full flex items-center justify-center';
+                statusIcon.innerHTML = '<i class="fas fa-times text-white"></i>';
+                statusText.textContent = 'Tidak Terhubung';
+                statusText.className = 'font-medium text-red-800';
+                statusDesc.textContent = error || 'Konfigurasi Firebase diperlukan';
+                statusDesc.className = 'text-sm text-red-600';
+            }
+        }
+
+        function updateLocalDataCount() {
+            const el = document.getElementById('localDataCount');
+            if (el) el.textContent = wajibPajakData.length;
+        }
+
+        async function updateCloudDataCount() {
+            if (!firebaseConnected || !firebaseDB) {
+                document.getElementById('cloudDataCount').textContent = '-';
+                return;
+            }
+            
+            try {
+                const snapshot = await firebaseDB.ref('wajibPajak').once('value');
+                const data = snapshot.val();
+                const count = data ? Object.keys(data).length : 0;
+                document.getElementById('cloudDataCount').textContent = count;
+            } catch (error) {
+                console.error('Error getting cloud count:', error);
+                document.getElementById('cloudDataCount').textContent = 'Error';
+            }
+        }
+
+        function updateCloudStatus() {
+            updateLocalDataCount();
+            if (firebaseConnected) {
+                updateCloudDataCount();
+            }
+        }
+
+        async function uploadToCloud() {
+            if (!firebaseConnected || !firebaseDB) {
+                showToast('Firebase belum terhubung!');
+                return;
+            }
+            
+            const btn = document.getElementById('btnUpload');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mengupload...';
+            
+            try {
+                addSyncLog('⏳ Memulai upload data ke cloud...');
+                
+                // Upload wajib pajak data
+                const wpRef = firebaseDB.ref('wajibPajak');
+                for (const wp of wajibPajakData) {
+                    await wpRef.child(wp.id.toString()).set(wp);
+                }
+                addSyncLog(`✓ ${wajibPajakData.length} data wajib pajak diupload`);
+                
+                // Upload users data
+                const usersRef = firebaseDB.ref('users');
+                for (const user of users) {
+                    await usersRef.child(user.id.toString()).set(user);
+                }
+                addSyncLog(`✓ ${users.length} data user diupload`);
+                
+                // Upload map layers metadata
+                const layersRef = firebaseDB.ref('mapLayers');
+                await layersRef.set(mapLayers);
+                addSyncLog(`✓ ${mapLayers.length} layer peta diupload`);
+                
+                await updateCloudDataCount();
+                showToast('Data berhasil diupload ke cloud!');
+                addSyncLog('✓ Upload selesai');
+                
+            } catch (error) {
+                console.error('Upload error:', error);
+                addSyncLog('✗ Error: ' + error.message);
+                showToast('Gagal upload: ' + error.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-cloud-upload-alt"></i> Upload ke Cloud';
+            }
+        }
+
+        async function downloadFromCloud() {
+            if (!firebaseConnected || !firebaseDB) {
+                showToast('Firebase belum terhubung!');
+                return;
+            }
+            
+            if (!confirm('Download akan menimpa data lokal. Lanjutkan?')) return;
+            
+            const btn = document.getElementById('btnDownload');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mendownload...';
+            
+            try {
+                addSyncLog('⏳ Memulai download data dari cloud...');
+                
+                // Download wajib pajak data
+                const wpSnapshot = await firebaseDB.ref('wajibPajak').once('value');
+                const wpData = wpSnapshot.val();
+                if (wpData) {
+                    wajibPajakData = Object.values(wpData);
+                    localStorage.setItem('wajibPajakData', JSON.stringify(wajibPajakData));
+                    addSyncLog(`✓ ${wajibPajakData.length} data wajib pajak didownload`);
+                } else {
+                    addSyncLog('ℹ Tidak ada data wajib pajak di cloud');
+                }
+                
+                // Download users data
+                const usersSnapshot = await firebaseDB.ref('users').once('value');
+                const usersData = usersSnapshot.val();
+                if (usersData) {
+                    users = Object.values(usersData);
+                    localStorage.setItem('simpatdaUsers', JSON.stringify(users));
+                    addSyncLog(`✓ ${users.length} data user didownload`);
+                }
+                
+                // Download map layers
+                const layersSnapshot = await firebaseDB.ref('mapLayers').once('value');
+                const layersData = layersSnapshot.val();
+                if (layersData) {
+                    mapLayers = layersData;
+                    localStorage.setItem('mapLayers', JSON.stringify(mapLayers));
+                    addSyncLog(`✓ ${mapLayers.length} layer peta didownload`);
+                }
+                
+                updateLocalDataCount();
+                updateDashboard();
+                renderTable();
+                
+                showToast('Data berhasil didownload dari cloud!');
+                addSyncLog('✓ Download selesai');
+                
+            } catch (error) {
+                console.error('Download error:', error);
+                addSyncLog('✗ Error: ' + error.message);
+                showToast('Gagal download: ' + error.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-cloud-download-alt"></i> Download dari Cloud';
+            }
+        }
+
+        async function syncData() {
+            if (!firebaseConnected || !firebaseDB) {
+                showToast('Firebase belum terhubung!');
+                return;
+            }
+            
+            const btn = document.getElementById('btnSync');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menyinkronkan...';
+            
+            try {
+                addSyncLog('⏳ Memulai sinkronisasi 2 arah...');
+                
+                // Get cloud data
+                const wpSnapshot = await firebaseDB.ref('wajibPajak').once('value');
+                const cloudData = wpSnapshot.val() ? Object.values(wpSnapshot.val()) : [];
+                
+                // Merge data (newer wins)
+                const mergedData = mergeData(wajibPajakData, cloudData);
+                
+                addSyncLog(`ℹ Lokal: ${wajibPajakData.length}, Cloud: ${cloudData.length}, Merged: ${mergedData.length}`);
+                
+                // Update local
+                wajibPajakData = mergedData;
+                localStorage.setItem('wajibPajakData', JSON.stringify(wajibPajakData));
+                
+                // Update cloud
+                const wpRef = firebaseDB.ref('wajibPajak');
+                await wpRef.remove();
+                for (const wp of mergedData) {
+                    await wpRef.child(wp.id.toString()).set(wp);
+                }
+                
+                // Sync users
+                const usersSnapshot = await firebaseDB.ref('users').once('value');
+                const cloudUsers = usersSnapshot.val() ? Object.values(usersSnapshot.val()) : [];
+                const mergedUsers = mergeData(users, cloudUsers);
+                users = mergedUsers;
+                localStorage.setItem('simpatdaUsers', JSON.stringify(users));
+                
+                const usersRef = firebaseDB.ref('users');
+                await usersRef.remove();
+                for (const user of mergedUsers) {
+                    await usersRef.child(user.id.toString()).set(user);
+                }
+                
+                updateLocalDataCount();
+                await updateCloudDataCount();
+                updateDashboard();
+                renderTable();
+                
+                showToast('Sinkronisasi berhasil!');
+                addSyncLog('✓ Sinkronisasi selesai');
+                
+            } catch (error) {
+                console.error('Sync error:', error);
+                addSyncLog('✗ Error: ' + error.message);
+                showToast('Gagal sinkronisasi: ' + error.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-sync-alt"></i> Sinkronkan (2 Arah)';
+            }
+        }
+
+        function mergeData(localData, cloudData) {
+            const merged = new Map();
+            
+            // Add local data
+            localData.forEach(item => {
+                merged.set(item.id, item);
+            });
+            
+            // Merge with cloud data (newer wins based on createdAt or updatedAt)
+            cloudData.forEach(item => {
+                const existing = merged.get(item.id);
+                if (!existing) {
+                    merged.set(item.id, item);
+                } else {
+                    // Compare dates, newer wins
+                    const existingDate = new Date(existing.updatedAt || existing.createdAt);
+                    const newDate = new Date(item.updatedAt || item.createdAt);
+                    if (newDate > existingDate) {
+                        merged.set(item.id, item);
+                    }
+                }
+            });
+            
+            return Array.from(merged.values());
+        }
+
+        function enableRealtimeSync() {
+            if (!firebaseConnected || !firebaseDB) return;
+            
+            // Remove existing listener
+            if (realtimeListener) {
+                firebaseDB.ref('wajibPajak').off('value', realtimeListener);
+            }
+            
+            // Add new listener
+            realtimeListener = firebaseDB.ref('wajibPajak').on('value', (snapshot) => {
+                const data = snapshot.val();
+                if (data) {
+                    const cloudData = Object.values(data);
+                    // Only update if cloud has more data or different data
+                    if (cloudData.length !== wajibPajakData.length) {
+                        wajibPajakData = cloudData;
+                        localStorage.setItem('wajibPajakData', JSON.stringify(wajibPajakData));
+                        updateDashboard();
+                        updateLocalDataCount();
+                        addSyncLog('⚡ Realtime sync: Data diperbarui');
+                    }
+                }
+            });
+            
+            addSyncLog('⚡ Realtime sync diaktifkan');
+        }
+
+        function disableRealtimeSync() {
+            if (realtimeListener && firebaseDB) {
+                firebaseDB.ref('wajibPajak').off('value', realtimeListener);
+                realtimeListener = null;
+                addSyncLog('⚡ Realtime sync dinonaktifkan');
+            }
+        }
+
+        function toggleRealtimeSync() {
+            const enabled = document.getElementById('realtimeSync').checked;
+            if (enabled) {
+                enableRealtimeSync();
+            } else {
+                disableRealtimeSync();
+            }
+            saveAutoSyncSettings();
+        }
+
+        function saveAutoSyncSettings() {
+            const settings = {
+                autoSyncSave: document.getElementById('autoSyncSave')?.checked || false,
+                realtimeSync: document.getElementById('realtimeSync')?.checked || false
+            };
+            localStorage.setItem('autoSyncSettings', JSON.stringify(settings));
+        }
+
+        function loadAutoSyncSettings() {
+            const settings = JSON.parse(localStorage.getItem('autoSyncSettings')) || {};
+            if (document.getElementById('autoSyncSave')) {
+                document.getElementById('autoSyncSave').checked = settings.autoSyncSave || false;
+            }
+            if (document.getElementById('realtimeSync')) {
+                document.getElementById('realtimeSync').checked = settings.realtimeSync || false;
+            }
+        }
+
+        function addSyncLog(message) {
+            const logDiv = document.getElementById('syncLog');
+            if (!logDiv) return;
+            
+            logDiv.classList.remove('hidden');
+            const time = new Date().toLocaleTimeString('id-ID');
+            const logEntry = document.createElement('div');
+            logEntry.textContent = `[${time}] ${message}`;
+            logDiv.appendChild(logEntry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+            
+            // Keep only last 20 logs
+            while (logDiv.children.length > 20) {
+                logDiv.removeChild(logDiv.firstChild);
+            }
+        }
+
+        // Auto-sync when saving data
+        async function autoSyncAfterSave() {
+            const settings = JSON.parse(localStorage.getItem('autoSyncSettings')) || {};
+            if (settings.autoSyncSave && firebaseConnected && firebaseDB) {
+                try {
+                    const wpRef = firebaseDB.ref('wajibPajak');
+                    const latestWP = wajibPajakData[wajibPajakData.length - 1];
+                    await wpRef.child(latestWP.id.toString()).set(latestWP);
+                    console.log('Auto-synced to cloud');
+                } catch (error) {
+                    console.error('Auto-sync error:', error);
+                }
+            }
+        }
     </script>
 </body>
 </html>
