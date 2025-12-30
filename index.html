@@ -16,6 +16,8 @@
     <script src="https://unpkg.com/jszip@3.10.1/dist/jszip.min.js"></script>
     <!-- toGeoJSON for KML -->
     <script src="https://unpkg.com/@tmcw/togeojson@5.8.1/dist/togeojson.umd.js"></script>
+    <!-- Tax Form Definitions -->
+    <script src="tax-forms.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
         body { font-family: 'Inter', sans-serif; }
@@ -1554,10 +1556,13 @@
             
             container.classList.remove('hidden');
             
+            // Get form definition from tax-forms.js or use PBB inline
             let specificFields = '';
             
-            // PBB-P2 specific fields
-            if (taxType === 'pbb') {
+            if (typeof taxFormDefinitions !== 'undefined' && taxFormDefinitions[taxType]) {
+                specificFields = taxFormDefinitions[taxType];
+            } else if (taxType === 'pbb') {
+                // PBB-P2 specific fields (fallback)
                 specificFields = `
                     <!-- Data Objek Pajak PBB-P2 -->
                     <div class="mb-6 p-4 bg-indigo-50 rounded-lg border border-indigo-200">
@@ -1713,13 +1718,8 @@
                 `;
             }
             
-            container.innerHTML = `
-                <h4 class="text-md font-semibold text-gray-700 mb-4">
-                    <i class="fas ${taxTypes[taxType]?.icon || 'fa-info-circle'} text-blue-600 mr-2"></i>
-                    Data Khusus ${taxTypes[taxType]?.name || 'Pajak'}
-                </h4>
-                ${specificFields}
-                <!-- Koordinat Lokasi -->
+            // Get koordinat section
+            const koordinatHtml = typeof koordinatSection !== 'undefined' ? koordinatSection : `
                 <div class="p-4 bg-gray-50 rounded-lg border">
                     <h5 class="text-sm font-semibold text-gray-700 mb-4 flex items-center gap-2">
                         <i class="fas fa-map-marker-alt text-red-500"></i> Koordinat Lokasi Objek Pajak
@@ -1740,6 +1740,15 @@
                         </div>
                     </div>
                 </div>
+            `;
+            
+            container.innerHTML = `
+                <h4 class="text-md font-semibold text-gray-700 mb-4">
+                    <i class="fas ${taxTypes[taxType]?.icon || 'fa-info-circle'} text-blue-600 mr-2"></i>
+                    Data Khusus ${taxTypes[taxType]?.name || 'Pajak'}
+                </h4>
+                ${specificFields}
+                ${koordinatHtml}
             `;
         }
         
@@ -1850,25 +1859,29 @@
                 longitude: document.getElementById('tax_longitude')?.value || ''
             };
             
-            // PBB-P2 specific data
+            // Collect all tax-specific fields dynamically
+            const taxContainer = document.getElementById('taxFieldsContainer');
+            const inputs = taxContainer.querySelectorAll('input, select, textarea');
+            inputs.forEach(input => {
+                if (input.id && input.id.startsWith('tax_') && input.id !== 'tax_latitude' && input.id !== 'tax_longitude') {
+                    const key = input.id.replace('tax_', '');
+                    if (input.type === 'checkbox') {
+                        taxDetails[key] = input.checked;
+                    } else if (input.value) {
+                        // Parse rupiah fields
+                        if (input.classList.contains('rupiah') || input.id.includes('njop') || input.id.includes('harga') || input.id.includes('tarif') || input.id.includes('nilai') || input.id.includes('omzet') || input.id.includes('biaya')) {
+                            taxDetails[key] = parseRupiah(input.value);
+                        } else {
+                            taxDetails[key] = input.value;
+                        }
+                    }
+                }
+            });
+            
+            // PBB-P2 specific data (legacy support)
             if (jenisPajak === 'pbb') {
-                taxDetails = {
-                    ...taxDetails,
-                    nop: document.getElementById('tax_nop')?.value || '',
-                    peruntukan: document.getElementById('tax_peruntukan')?.value || '',
-                    panjangTanah: document.getElementById('tax_panjang_tanah')?.value || '',
-                    lebarTanah: document.getElementById('tax_lebar_tanah')?.value || '',
-                    luasTanah: document.getElementById('tax_luas_tanah')?.value || '',
-                    njopTanah: parseRupiah(document.getElementById('tax_njop_tanah')?.value),
-                    panjangBangunan: document.getElementById('tax_panjang_bangunan')?.value || '',
-                    lebarBangunan: document.getElementById('tax_lebar_bangunan')?.value || '',
-                    luasBangunan: document.getElementById('tax_luas_bangunan')?.value || '',
-                    njopBangunan: parseRupiah(document.getElementById('tax_njop_bangunan')?.value),
-                    jumlahLantai: document.getElementById('tax_jumlah_lantai')?.value || '',
-                    tahunDibangun: document.getElementById('tax_tahun_dibangun')?.value || '',
-                    kondisiBangunan: document.getElementById('tax_kondisi_bangunan')?.value || '',
-                    jenisKonstruksi: document.getElementById('tax_jenis_konstruksi')?.value || ''
-                };
+                taxDetails.njopTanah = parseRupiah(document.getElementById('tax_njop_tanah')?.value);
+                taxDetails.njopBangunan = parseRupiah(document.getElementById('tax_njop_bangunan')?.value);
             }
             
             const wpData = {
