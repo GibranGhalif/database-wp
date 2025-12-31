@@ -22,6 +22,8 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
         body { font-family: 'Inter', sans-serif; }
@@ -301,6 +303,9 @@
                     </a>
                     <a href="#" onclick="showSection('petablok')" class="sidebar-item flex items-center gap-3 px-6 py-3 cursor-pointer" id="nav-petablok">
                         <i class="fas fa-map w-5"></i> Peta Blok
+                    </a>
+                    <a href="#" onclick="showSection('realisasi')" class="sidebar-item flex items-center gap-3 px-6 py-3 cursor-pointer" id="nav-realisasi">
+                        <i class="fas fa-chart-bar w-5"></i> Realisasi Pajak
                     </a>
                     
                     <div class="px-4 py-2 mt-4 text-xs text-blue-300 uppercase tracking-wider">Jenis Pajak</div>
@@ -1028,6 +1033,172 @@
                     </div>
                 </section>
 
+                <!-- Realisasi Section -->
+                <section id="section-realisasi" class="p-8 hidden animate-fade-in">
+                    <!-- Filter & Summary -->
+                    <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-6">
+                        <div class="bg-white rounded-xl shadow-sm p-6">
+                            <h3 class="text-sm font-semibold text-gray-600 mb-3">Periode Laporan</h3>
+                            <div class="space-y-3">
+                                <div>
+                                    <label class="text-xs text-gray-500">Tahun</label>
+                                    <select id="realisasiTahun" class="w-full px-3 py-2 border rounded-lg" onchange="loadRealisasi()">
+                                        <option value="2024">2024</option>
+                                        <option value="2023">2023</option>
+                                        <option value="2022">2022</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="text-xs text-gray-500">Bulan</label>
+                                    <select id="realisasiBulan" class="w-full px-3 py-2 border rounded-lg" onchange="loadRealisasi()">
+                                        <option value="">Semua Bulan</option>
+                                        <option value="1">Januari</option>
+                                        <option value="2">Februari</option>
+                                        <option value="3">Maret</option>
+                                        <option value="4">April</option>
+                                        <option value="5">Mei</option>
+                                        <option value="6">Juni</option>
+                                        <option value="7">Juli</option>
+                                        <option value="8">Agustus</option>
+                                        <option value="9">September</option>
+                                        <option value="10">Oktober</option>
+                                        <option value="11">November</option>
+                                        <option value="12">Desember</option>
+                                    </select>
+                                </div>
+                                <button onclick="showInputRealisasiModal()" class="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm flex items-center justify-center gap-2">
+                                    <i class="fas fa-plus"></i> Input Realisasi
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-gradient-to-br from-blue-500 to-blue-700 rounded-xl shadow-sm p-6 text-white">
+                            <div class="flex items-center justify-between mb-2">
+                                <p class="text-blue-100 text-sm">Total Target</p>
+                                <i class="fas fa-bullseye text-blue-200"></i>
+                            </div>
+                            <h3 class="text-2xl font-bold" id="totalTarget">Rp 0</h3>
+                            <p class="text-xs text-blue-200 mt-1">Tahun <span id="tahunTarget">2024</span></p>
+                        </div>
+                        
+                        <div class="bg-gradient-to-br from-green-500 to-green-700 rounded-xl shadow-sm p-6 text-white">
+                            <div class="flex items-center justify-between mb-2">
+                                <p class="text-green-100 text-sm">Total Realisasi</p>
+                                <i class="fas fa-chart-line text-green-200"></i>
+                            </div>
+                            <h3 class="text-2xl font-bold" id="totalRealisasi">Rp 0</h3>
+                            <p class="text-xs text-green-200 mt-1">s/d <span id="periodeRealisasi">Desember 2024</span></p>
+                        </div>
+                        
+                        <div class="bg-gradient-to-br from-purple-500 to-purple-700 rounded-xl shadow-sm p-6 text-white">
+                            <div class="flex items-center justify-between mb-2">
+                                <p class="text-purple-100 text-sm">Persentase Capaian</p>
+                                <i class="fas fa-percentage text-purple-200"></i>
+                            </div>
+                            <h3 class="text-2xl font-bold" id="persenCapaian">0%</h3>
+                            <div class="mt-2 bg-purple-400/30 rounded-full h-2">
+                                <div id="progressCapaian" class="bg-white rounded-full h-2 transition-all duration-500" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Chart & Table -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                        <!-- Chart -->
+                        <div class="bg-white rounded-xl shadow-sm p-6">
+                            <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                                <i class="fas fa-chart-bar text-blue-600"></i> Grafik Target vs Realisasi
+                            </h3>
+                            <div id="chartContainer" class="relative" style="height: 350px;">
+                                <canvas id="realisasiChart"></canvas>
+                            </div>
+                        </div>
+                        
+                        <!-- Pie Chart -->
+                        <div class="bg-white rounded-xl shadow-sm p-6">
+                            <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                                <i class="fas fa-chart-pie text-green-600"></i> Komposisi Realisasi
+                            </h3>
+                            <div id="pieChartContainer" class="relative" style="height: 350px;">
+                                <canvas id="komposisiChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Detail Table -->
+                    <div class="bg-white rounded-xl shadow-sm p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                                <i class="fas fa-table text-blue-600"></i> Detail Realisasi Per Jenis Pajak
+                            </h3>
+                            <button onclick="exportRealisasi()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm flex items-center gap-2">
+                                <i class="fas fa-file-excel"></i> Export
+                            </button>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full" id="realisasiTable">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">No</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Jenis Pajak</th>
+                                        <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Target (Rp)</th>
+                                        <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Realisasi (Rp)</th>
+                                        <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Selisih (Rp)</th>
+                                        <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Capaian (%)</th>
+                                        <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Progress</th>
+                                        <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="realisasiTableBody">
+                                    <tr><td colspan="8" class="px-4 py-8 text-center text-gray-500">Memuat data...</td></tr>
+                                </tbody>
+                                <tfoot class="bg-blue-50 font-semibold">
+                                    <tr>
+                                        <td colspan="2" class="px-4 py-3 text-sm">TOTAL</td>
+                                        <td class="px-4 py-3 text-right text-sm" id="footerTarget">Rp 0</td>
+                                        <td class="px-4 py-3 text-right text-sm" id="footerRealisasi">Rp 0</td>
+                                        <td class="px-4 py-3 text-right text-sm" id="footerSelisih">Rp 0</td>
+                                        <td class="px-4 py-3 text-center text-sm" id="footerCapaian">0%</td>
+                                        <td colspan="2"></td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Monthly Detail -->
+                    <div class="bg-white rounded-xl shadow-sm p-6 mt-6">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                            <i class="fas fa-calendar-alt text-blue-600"></i> Realisasi Bulanan
+                        </h3>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm" id="monthlyTable">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Jenis Pajak</th>
+                                        <th class="px-3 py-2 text-right text-xs font-medium text-gray-500">Jan</th>
+                                        <th class="px-3 py-2 text-right text-xs font-medium text-gray-500">Feb</th>
+                                        <th class="px-3 py-2 text-right text-xs font-medium text-gray-500">Mar</th>
+                                        <th class="px-3 py-2 text-right text-xs font-medium text-gray-500">Apr</th>
+                                        <th class="px-3 py-2 text-right text-xs font-medium text-gray-500">Mei</th>
+                                        <th class="px-3 py-2 text-right text-xs font-medium text-gray-500">Jun</th>
+                                        <th class="px-3 py-2 text-right text-xs font-medium text-gray-500">Jul</th>
+                                        <th class="px-3 py-2 text-right text-xs font-medium text-gray-500">Ags</th>
+                                        <th class="px-3 py-2 text-right text-xs font-medium text-gray-500">Sep</th>
+                                        <th class="px-3 py-2 text-right text-xs font-medium text-gray-500">Okt</th>
+                                        <th class="px-3 py-2 text-right text-xs font-medium text-gray-500">Nov</th>
+                                        <th class="px-3 py-2 text-right text-xs font-medium text-gray-500">Des</th>
+                                        <th class="px-3 py-2 text-right text-xs font-medium text-gray-500 bg-blue-100">Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="monthlyTableBody">
+                                    <!-- Dynamic content -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
                 <!-- Data Section -->
                 <section id="section-data" class="p-8 hidden animate-fade-in">
                     <div class="bg-white rounded-xl shadow-sm p-6">
@@ -1174,6 +1345,112 @@
         </div>
     </div>
 
+    <!-- Input Realisasi Modal -->
+    <div id="realisasiModal" class="modal fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div class="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between">
+                <h3 class="text-lg font-semibold flex items-center gap-2">
+                    <i class="fas fa-edit text-blue-600"></i>
+                    <span id="realisasiModalTitle">Input Target & Realisasi</span>
+                </h3>
+                <button onclick="closeRealisasiModal()" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <div class="p-6">
+                <form id="realisasiForm" onsubmit="saveRealisasi(event)">
+                    <input type="hidden" id="editRealisasiId">
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Tahun <span class="text-red-500">*</span></label>
+                            <select id="inputTahun" required class="w-full px-4 py-2 border rounded-lg">
+                                <option value="2024">2024</option>
+                                <option value="2023">2023</option>
+                                <option value="2022">2022</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Bulan <span class="text-red-500">*</span></label>
+                            <select id="inputBulan" required class="w-full px-4 py-2 border rounded-lg">
+                                <option value="1">Januari</option>
+                                <option value="2">Februari</option>
+                                <option value="3">Maret</option>
+                                <option value="4">April</option>
+                                <option value="5">Mei</option>
+                                <option value="6">Juni</option>
+                                <option value="7">Juli</option>
+                                <option value="8">Agustus</option>
+                                <option value="9">September</option>
+                                <option value="10">Oktober</option>
+                                <option value="11">November</option>
+                                <option value="12">Desember</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Jenis Pajak <span class="text-red-500">*</span></label>
+                        <select id="inputJenisPajak" required class="w-full px-4 py-2 border rounded-lg">
+                            <option value="">Pilih Jenis Pajak</option>
+                            <option value="reklame">Pajak Reklame</option>
+                            <option value="air_tanah">Pajak Air Tanah</option>
+                            <option value="sarang_walet">Pajak Sarang Burung Walet</option>
+                            <option value="mineral">Pajak Mineral Bukan Logam dan Batuan</option>
+                            <option value="pbb">PBB-P2</option>
+                            <option value="bphtb">BPHTB</option>
+                            <option value="pbjt_makanan">PBJT - Makanan dan Minuman</option>
+                            <option value="pbjt_listrik">PBJT - Tenaga Listrik</option>
+                            <option value="pbjt_hotel">PBJT - Jasa Perhotelan</option>
+                            <option value="pbjt_parkir">PBJT - Jasa Parkir</option>
+                            <option value="pbjt_hiburan">PBJT - Jasa Hiburan</option>
+                            <option value="opsen_pkb">Opsen PKB</option>
+                            <option value="opsen_bbnkb">Opsen BBNKB</option>
+                        </select>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Target (Rp) <span class="text-red-500">*</span></label>
+                            <input type="text" id="inputTarget" required placeholder="0"
+                                class="w-full px-4 py-2 border rounded-lg" oninput="formatRupiahInput(this)">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Realisasi (Rp) <span class="text-red-500">*</span></label>
+                            <input type="text" id="inputRealisasiNominal" required placeholder="0"
+                                class="w-full px-4 py-2 border rounded-lg" oninput="formatRupiahInput(this); hitungCapaianInput()">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4 p-4 bg-blue-50 rounded-lg">
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm text-gray-600">Persentase Capaian:</span>
+                            <span class="text-xl font-bold text-blue-700" id="inputCapaian">0%</span>
+                        </div>
+                        <div class="mt-2 bg-blue-200 rounded-full h-3">
+                            <div id="inputProgressBar" class="bg-blue-600 rounded-full h-3 transition-all duration-300" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Keterangan</label>
+                        <textarea id="inputKeterangan" rows="2" placeholder="Keterangan tambahan (opsional)"
+                            class="w-full px-4 py-2 border rounded-lg"></textarea>
+                    </div>
+                    
+                    <div class="flex gap-2 pt-4 border-t">
+                        <button type="submit" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2">
+                            <i class="fas fa-save"></i> Simpan
+                        </button>
+                        <button type="button" onclick="closeRealisasiModal()" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">
+                            Batal
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <!-- Toast Notification -->
     <div id="toast" class="fixed bottom-4 right-4 bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg hidden z-50 flex items-center gap-2">
         <i class="fas fa-check-circle"></i>
@@ -1303,7 +1580,7 @@
             document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('active'));
             document.getElementById(`nav-${section}`)?.classList.add('active');
             
-            const titles = { dashboard: 'Dashboard', input: 'Input Wajib Pajak', data: 'Data Wajib Pajak', users: 'Manajemen User', petablok: 'Peta Blok', firebase: 'Pengaturan Cloud Storage' };
+            const titles = { dashboard: 'Dashboard', input: 'Input Wajib Pajak', data: 'Data Wajib Pajak', users: 'Manajemen User', petablok: 'Peta Blok', firebase: 'Pengaturan Cloud Storage', realisasi: 'Realisasi Pajak Daerah' };
             document.getElementById('page-title').textContent = titles[section] || 'Dashboard';
             
             if (section === 'input') generateNPWPD();
@@ -1312,6 +1589,7 @@
             if (section === 'users') renderUserTable();
             if (section === 'petablok') initBlockMap();
             if (section === 'firebase') updateCloudStatus();
+            if (section === 'realisasi') loadRealisasi();
         }
 
         // ============= PETA BLOK FUNCTIONS =============
@@ -3177,6 +3455,443 @@
                 }
             }
         }
+
+        // ============= REALISASI PAJAK FUNCTIONS =============
+        let realisasiData = JSON.parse(localStorage.getItem('realisasiData')) || [];
+        let realisasiChart = null;
+        let komposisiChart = null;
+        
+        const bulanNames = ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 
+                           'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+        const bulanShort = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'];
+
+        function showInputRealisasiModal(editId = null) {
+            document.getElementById('realisasiModal').classList.remove('hidden');
+            document.getElementById('realisasiForm').reset();
+            document.getElementById('editRealisasiId').value = '';
+            document.getElementById('realisasiModalTitle').textContent = 'Input Target & Realisasi';
+            document.getElementById('inputCapaian').textContent = '0%';
+            document.getElementById('inputProgressBar').style.width = '0%';
+            
+            // Set current month
+            const now = new Date();
+            document.getElementById('inputTahun').value = now.getFullYear();
+            document.getElementById('inputBulan').value = now.getMonth() + 1;
+            
+            if (editId) {
+                const data = realisasiData.find(r => r.id === editId);
+                if (data) {
+                    document.getElementById('editRealisasiId').value = data.id;
+                    document.getElementById('realisasiModalTitle').textContent = 'Edit Realisasi';
+                    document.getElementById('inputTahun').value = data.tahun;
+                    document.getElementById('inputBulan').value = data.bulan;
+                    document.getElementById('inputJenisPajak').value = data.jenisPajak;
+                    document.getElementById('inputTarget').value = new Intl.NumberFormat('id-ID').format(data.target);
+                    document.getElementById('inputRealisasiNominal').value = new Intl.NumberFormat('id-ID').format(data.realisasi);
+                    document.getElementById('inputKeterangan').value = data.keterangan || '';
+                    hitungCapaianInput();
+                }
+            }
+        }
+
+        function closeRealisasiModal() {
+            document.getElementById('realisasiModal').classList.add('hidden');
+        }
+
+        function formatRupiahInput(input) {
+            let value = input.value.replace(/[^0-9]/g, '');
+            if (value) {
+                input.value = new Intl.NumberFormat('id-ID').format(value);
+            }
+        }
+
+        function hitungCapaianInput() {
+            const target = parseRupiah(document.getElementById('inputTarget').value);
+            const realisasi = parseRupiah(document.getElementById('inputRealisasiNominal').value);
+            const capaian = target > 0 ? (realisasi / target * 100) : 0;
+            
+            document.getElementById('inputCapaian').textContent = capaian.toFixed(2) + '%';
+            document.getElementById('inputProgressBar').style.width = Math.min(capaian, 100) + '%';
+            
+            // Update color based on capaian
+            const bar = document.getElementById('inputProgressBar');
+            bar.classList.remove('bg-red-500', 'bg-yellow-500', 'bg-green-500', 'bg-blue-600');
+            if (capaian >= 100) bar.classList.add('bg-green-500');
+            else if (capaian >= 75) bar.classList.add('bg-blue-600');
+            else if (capaian >= 50) bar.classList.add('bg-yellow-500');
+            else bar.classList.add('bg-red-500');
+        }
+
+        function saveRealisasi(event) {
+            event.preventDefault();
+            
+            const editId = document.getElementById('editRealisasiId').value;
+            const tahun = parseInt(document.getElementById('inputTahun').value);
+            const bulan = parseInt(document.getElementById('inputBulan').value);
+            const jenisPajak = document.getElementById('inputJenisPajak').value;
+            const target = parseRupiah(document.getElementById('inputTarget').value);
+            const realisasi = parseRupiah(document.getElementById('inputRealisasiNominal').value);
+            const keterangan = document.getElementById('inputKeterangan').value;
+            
+            if (editId) {
+                // Update existing
+                const idx = realisasiData.findIndex(r => r.id === parseInt(editId));
+                if (idx !== -1) {
+                    realisasiData[idx] = {
+                        ...realisasiData[idx],
+                        tahun, bulan, jenisPajak, target, realisasi, keterangan,
+                        updatedAt: new Date().toISOString()
+                    };
+                }
+            } else {
+                // Check for duplicate
+                const existing = realisasiData.find(r => 
+                    r.tahun === tahun && r.bulan === bulan && r.jenisPajak === jenisPajak
+                );
+                
+                if (existing) {
+                    if (!confirm('Data untuk periode dan jenis pajak ini sudah ada. Ganti dengan data baru?')) {
+                        return;
+                    }
+                    const idx = realisasiData.indexOf(existing);
+                    realisasiData[idx] = {
+                        ...existing,
+                        target, realisasi, keterangan,
+                        updatedAt: new Date().toISOString()
+                    };
+                } else {
+                    realisasiData.push({
+                        id: Date.now(),
+                        tahun, bulan, jenisPajak, target, realisasi, keterangan,
+                        createdAt: new Date().toISOString()
+                    });
+                }
+            }
+            
+            localStorage.setItem('realisasiData', JSON.stringify(realisasiData));
+            closeRealisasiModal();
+            loadRealisasi();
+            showToast('Data realisasi berhasil disimpan!');
+        }
+
+        function loadRealisasi() {
+            const tahun = parseInt(document.getElementById('realisasiTahun').value);
+            const bulan = document.getElementById('realisasiBulan').value;
+            
+            // Filter data by year and optionally by month
+            let filteredData = realisasiData.filter(r => r.tahun === tahun);
+            if (bulan) {
+                filteredData = filteredData.filter(r => r.bulan === parseInt(bulan));
+            }
+            
+            // Calculate totals per tax type
+            const taxTotals = {};
+            Object.keys(taxTypes).forEach(key => {
+                taxTotals[key] = { target: 0, realisasi: 0 };
+            });
+            
+            filteredData.forEach(r => {
+                if (taxTotals[r.jenisPajak]) {
+                    taxTotals[r.jenisPajak].target += r.target;
+                    taxTotals[r.jenisPajak].realisasi += r.realisasi;
+                }
+            });
+            
+            // Calculate grand totals
+            let grandTarget = 0;
+            let grandRealisasi = 0;
+            Object.values(taxTotals).forEach(t => {
+                grandTarget += t.target;
+                grandRealisasi += t.realisasi;
+            });
+            
+            const grandCapaian = grandTarget > 0 ? (grandRealisasi / grandTarget * 100) : 0;
+            
+            // Update summary cards
+            document.getElementById('totalTarget').textContent = 'Rp ' + new Intl.NumberFormat('id-ID').format(grandTarget);
+            document.getElementById('totalRealisasi').textContent = 'Rp ' + new Intl.NumberFormat('id-ID').format(grandRealisasi);
+            document.getElementById('persenCapaian').textContent = grandCapaian.toFixed(1) + '%';
+            document.getElementById('progressCapaian').style.width = Math.min(grandCapaian, 100) + '%';
+            document.getElementById('tahunTarget').textContent = tahun;
+            document.getElementById('periodeRealisasi').textContent = bulan ? bulanNames[parseInt(bulan)] + ' ' + tahun : 'Desember ' + tahun;
+            
+            // Render table
+            renderRealisasiTable(taxTotals, grandTarget, grandRealisasi);
+            
+            // Render monthly table
+            renderMonthlyTable(tahun);
+            
+            // Render charts
+            renderRealisasiChart(taxTotals);
+            renderKomposisiChart(taxTotals);
+        }
+
+        function renderRealisasiTable(taxTotals, grandTarget, grandRealisasi) {
+            const tbody = document.getElementById('realisasiTableBody');
+            let rows = '';
+            let no = 1;
+            
+            Object.keys(taxTypes).forEach(key => {
+                const data = taxTotals[key];
+                const selisih = data.realisasi - data.target;
+                const capaian = data.target > 0 ? (data.realisasi / data.target * 100) : 0;
+                
+                let progressColor = 'bg-gray-200';
+                let textColor = 'text-gray-600';
+                if (capaian >= 100) { progressColor = 'bg-green-500'; textColor = 'text-green-600'; }
+                else if (capaian >= 75) { progressColor = 'bg-blue-500'; textColor = 'text-blue-600'; }
+                else if (capaian >= 50) { progressColor = 'bg-yellow-500'; textColor = 'text-yellow-600'; }
+                else if (capaian > 0) { progressColor = 'bg-red-500'; textColor = 'text-red-600'; }
+                
+                rows += `
+                    <tr class="table-row border-b hover:bg-gray-50">
+                        <td class="px-4 py-3 text-sm">${no++}</td>
+                        <td class="px-4 py-3 text-sm">
+                            <div class="flex items-center gap-2">
+                                <i class="fas ${taxTypes[key].icon} text-${taxTypes[key].color}-500"></i>
+                                ${taxTypes[key].name}
+                            </div>
+                        </td>
+                        <td class="px-4 py-3 text-sm text-right">${new Intl.NumberFormat('id-ID').format(data.target)}</td>
+                        <td class="px-4 py-3 text-sm text-right font-medium">${new Intl.NumberFormat('id-ID').format(data.realisasi)}</td>
+                        <td class="px-4 py-3 text-sm text-right ${selisih >= 0 ? 'text-green-600' : 'text-red-600'}">
+                            ${selisih >= 0 ? '+' : ''}${new Intl.NumberFormat('id-ID').format(selisih)}
+                        </td>
+                        <td class="px-4 py-3 text-sm text-center font-semibold ${textColor}">${capaian.toFixed(1)}%</td>
+                        <td class="px-4 py-3">
+                            <div class="w-full bg-gray-200 rounded-full h-2">
+                                <div class="${progressColor} h-2 rounded-full transition-all duration-300" style="width: ${Math.min(capaian, 100)}%"></div>
+                            </div>
+                        </td>
+                        <td class="px-4 py-3 text-center">
+                            <button onclick="editRealisasiByTax('${key}')" class="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs hover:bg-blue-200" title="Edit">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            tbody.innerHTML = rows;
+            
+            // Update footer
+            const grandCapaian = grandTarget > 0 ? (grandRealisasi / grandTarget * 100) : 0;
+            const grandSelisih = grandRealisasi - grandTarget;
+            document.getElementById('footerTarget').textContent = 'Rp ' + new Intl.NumberFormat('id-ID').format(grandTarget);
+            document.getElementById('footerRealisasi').textContent = 'Rp ' + new Intl.NumberFormat('id-ID').format(grandRealisasi);
+            document.getElementById('footerSelisih').textContent = (grandSelisih >= 0 ? '+' : '') + 'Rp ' + new Intl.NumberFormat('id-ID').format(grandSelisih);
+            document.getElementById('footerCapaian').textContent = grandCapaian.toFixed(1) + '%';
+        }
+
+        function renderMonthlyTable(tahun) {
+            const tbody = document.getElementById('monthlyTableBody');
+            let rows = '';
+            
+            Object.keys(taxTypes).forEach(key => {
+                let rowTotal = 0;
+                let cells = `<td class="px-3 py-2 text-sm font-medium">${taxTypes[key].name}</td>`;
+                
+                for (let m = 1; m <= 12; m++) {
+                    const data = realisasiData.find(r => r.tahun === tahun && r.bulan === m && r.jenisPajak === key);
+                    const value = data ? data.realisasi : 0;
+                    rowTotal += value;
+                    cells += `<td class="px-3 py-2 text-xs text-right ${value > 0 ? '' : 'text-gray-300'}">${value > 0 ? formatJuta(value) : '-'}</td>`;
+                }
+                
+                cells += `<td class="px-3 py-2 text-xs text-right font-semibold bg-blue-50">${formatJuta(rowTotal)}</td>`;
+                rows += `<tr class="border-b hover:bg-gray-50">${cells}</tr>`;
+            });
+            
+            tbody.innerHTML = rows;
+        }
+
+        function formatJuta(value) {
+            if (value >= 1000000000) {
+                return (value / 1000000000).toFixed(1) + 'M';
+            } else if (value >= 1000000) {
+                return (value / 1000000).toFixed(1) + 'Jt';
+            } else if (value >= 1000) {
+                return (value / 1000).toFixed(0) + 'Rb';
+            }
+            return value.toString();
+        }
+
+        function renderRealisasiChart(taxTotals) {
+            const ctx = document.getElementById('realisasiChart').getContext('2d');
+            
+            if (realisasiChart) {
+                realisasiChart.destroy();
+            }
+            
+            const labels = Object.keys(taxTypes).map(k => taxTypes[k].name.replace('Pajak ', '').replace('PBJT ', ''));
+            const targetData = Object.keys(taxTypes).map(k => taxTotals[k].target);
+            const realisasiDataArr = Object.keys(taxTypes).map(k => taxTotals[k].realisasi);
+            
+            realisasiChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Target',
+                            data: targetData,
+                            backgroundColor: 'rgba(59, 130, 246, 0.5)',
+                            borderColor: 'rgb(59, 130, 246)',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Realisasi',
+                            data: realisasiDataArr,
+                            backgroundColor: 'rgba(34, 197, 94, 0.5)',
+                            borderColor: 'rgb(34, 197, 94)',
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: {
+                                font: { size: 9 },
+                                maxRotation: 45,
+                                minRotation: 45
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return formatJuta(value);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderKomposisiChart(taxTotals) {
+            const ctx = document.getElementById('komposisiChart').getContext('2d');
+            
+            if (komposisiChart) {
+                komposisiChart.destroy();
+            }
+            
+            const labels = [];
+            const data = [];
+            const colors = [
+                '#3b82f6', '#ef4444', '#22c55e', '#f59e0b', '#8b5cf6', 
+                '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#6366f1',
+                '#14b8a6', '#a855f7', '#eab308'
+            ];
+            
+            Object.keys(taxTypes).forEach((k, i) => {
+                if (taxTotals[k].realisasi > 0) {
+                    labels.push(taxTypes[k].name.replace('Pajak ', '').replace('PBJT ', ''));
+                    data.push(taxTotals[k].realisasi);
+                }
+            });
+            
+            komposisiChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: colors.slice(0, data.length),
+                        borderWidth: 2,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: {
+                                font: { size: 10 },
+                                boxWidth: 12
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const value = context.raw;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const persen = ((value / total) * 100).toFixed(1);
+                                    return `Rp ${new Intl.NumberFormat('id-ID').format(value)} (${persen}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function editRealisasiByTax(jenisPajak) {
+            const tahun = parseInt(document.getElementById('realisasiTahun').value);
+            const bulan = document.getElementById('realisasiBulan').value;
+            
+            // Find the first record for this tax type
+            const data = realisasiData.find(r => 
+                r.tahun === tahun && 
+                r.jenisPajak === jenisPajak &&
+                (!bulan || r.bulan === parseInt(bulan))
+            );
+            
+            if (data) {
+                showInputRealisasiModal(data.id);
+            } else {
+                showInputRealisasiModal();
+                document.getElementById('inputJenisPajak').value = jenisPajak;
+            }
+        }
+
+        function deleteRealisasi(id) {
+            if (confirm('Hapus data realisasi ini?')) {
+                realisasiData = realisasiData.filter(r => r.id !== id);
+                localStorage.setItem('realisasiData', JSON.stringify(realisasiData));
+                loadRealisasi();
+                showToast('Data realisasi berhasil dihapus!');
+            }
+        }
+
+        function exportRealisasi() {
+            const tahun = document.getElementById('realisasiTahun').value;
+            const headers = ['No', 'Jenis Pajak', 'Target', 'Realisasi', 'Selisih', 'Capaian (%)'];
+            let csv = headers.join(',') + '\n';
+            
+            let no = 1;
+            Object.keys(taxTypes).forEach(key => {
+                const yearData = realisasiData.filter(r => r.tahun === parseInt(tahun) && r.jenisPajak === key);
+                const target = yearData.reduce((sum, r) => sum + r.target, 0);
+                const realisasi = yearData.reduce((sum, r) => sum + r.realisasi, 0);
+                const selisih = realisasi - target;
+                const capaian = target > 0 ? (realisasi / target * 100).toFixed(2) : 0;
+                
+                csv += [no++, `"${taxTypes[key].name}"`, target, realisasi, selisih, capaian].join(',') + '\n';
+            });
+            
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `realisasi_pajak_sidrap_${tahun}.csv`;
+            link.click();
+            showToast('Data realisasi berhasil diekspor!');
+        }
+
+        // Close realisasi modal on outside click
+        document.getElementById('realisasiModal')?.addEventListener('click', function(e) {
+            if (e.target === this) closeRealisasiModal();
+        });
     </script>
 </body>
 </html>
