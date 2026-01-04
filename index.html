@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SIPADI - Sistem Informasi Manajemen Pajak Daerah Kabupaten Sidrap</title>
+    <title>SIMPATDA - Sistem Informasi Manajemen Pajak Daerah Kabupaten Sidrap</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <!-- Leaflet CSS -->
@@ -192,7 +192,7 @@
                         <text x="100" cy="180" text-anchor="middle" y="158" font-size="10" font-weight="bold" fill="#fbbf24">RAPPANG</text>
                     </svg>
                 </div>
-                <h1 class="text-3xl font-bold text-white mb-2">SIPADI</h1>
+                <h1 class="text-3xl font-bold text-white mb-2">SIMPATDA</h1>
                 <p class="text-blue-200 text-sm">Sistem Informasi Manajemen Pajak Daerah</p>
                 <p class="text-blue-300 text-xs mt-1">Kabupaten Sidenreng Rappang</p>
             </div>
@@ -259,7 +259,7 @@
 
             <!-- Footer -->
             <div class="text-center mt-6 text-blue-200 text-xs">
-                <p>© 2025 Badan Pendapatan Daerah Kabupaten Sidrap</p>
+                <p>© 2024 Badan Pendapatan Daerah Kabupaten Sidrap</p>
                 <p class="mt-1">UU No. 1 Tahun 2022 tentang HKPD & PP No. 35 Tahun 2024</p>
             </div>
         </div>
@@ -283,7 +283,7 @@
                             </svg>
                         </div>
                         <div>
-                            <h1 class="text-xl font-bold">SIPADI</h1>
+                            <h1 class="text-xl font-bold">SIMPATDA</h1>
                             <p class="text-xs text-blue-200">Kab. Sidrap v1.0</p>
                         </div>
                     </div>
@@ -404,7 +404,7 @@
                                 </svg>
                             </div>
                             <div>
-                                <h2 class="text-2xl font-bold">Selamat Datang di SIPADI</h2>
+                                <h2 class="text-2xl font-bold">Selamat Datang di SIMPATDA</h2>
                                 <p class="text-blue-100">Badan Pendapatan Daerah Kabupaten Sidenreng Rappang</p>
                             </div>
                         </div>
@@ -626,30 +626,8 @@
                                         </select>
                                     </div>
                                     <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-1">Kepatuhan Wajib Pajak <span class="text-red-500">*</span></label>
-                                        <select id="kepatuhanWP" required class="w-full px-4 py-2 border rounded-lg" onchange="toggleKepatuhanWP()">
-                                            <option value="">Pilih Kepatuhan Wp</option>
-                                            <option value="pribadi">Patuh</option>
-                                            <option value="badan">Tidak Patuh</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-1">Status Wajib Pajak <span class="text-red-500">*</span></label>
-                                        <select id="statusWP" required class="w-full px-4 py-2 border rounded-lg" onchange="toggleStatusWP()">
-                                            <option value="">Pilih Status Wp</option>
-                                            <option value="pribadi">Aktif</option>
-                                            <option value="badan">Tutup Sementara</option>
-                                            <option value="badan">Tutup Permanen</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-1">NIK <span class="text-red-500">*</span></label>
-                                        <input type="text" id="nik" required placeholder="Masukkan NIK"
-                                            class="w-full px-4 py-2 border rounded-lg">
-                                    </div>
-                                     <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-1">NPWP <span class="text-red-500">*</span></label>
-                                        <input type="text" id="npwp" required placeholder="Masukkan NPWP"
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">NIK/NPWP <span class="text-red-500">*</span></label>
+                                        <input type="text" id="nikNpwp" required placeholder="Masukkan NIK/NPWP"
                                             class="w-full px-4 py-2 border rounded-lg">
                                     </div>
                                     <div>
@@ -4118,6 +4096,4 @@
         });
     </script>
 </body>
-
 </html>
-
