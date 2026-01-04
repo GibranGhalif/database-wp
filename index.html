@@ -1424,9 +1424,9 @@
                     
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Target (Rp) <span class="text-red-500">*</span></label>
-                            <input type="text" id="inputTarget" required placeholder="0"
-                                class="w-full px-4 py-2 border rounded-lg" oninput="formatRupiahInput(this)">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Target (Rp) <span class="text-gray-400 text-xs">(opsional)</span></label>
+                            <input type="text" id="inputTarget" placeholder="0"
+                                class="w-full px-4 py-2 border rounded-lg" oninput="formatRupiahInput(this); hitungCapaianInput()">
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Realisasi (Rp) <span class="text-red-500">*</span></label>
@@ -2559,33 +2559,79 @@
                 taxDetails.njopBangunan = parseRupiah(document.getElementById('tax_njop_bangunan')?.value);
             }
             
-            const wpData = {
-                id: Date.now(),
-                npwpd: document.getElementById('npwpd').value,
-                jenisWP: document.getElementById('jenisWP').value,
-                nikNpwp: document.getElementById('nikNpwp').value,
-                namaWP: document.getElementById('namaWP').value,
-                namaUsaha: document.getElementById('namaUsaha').value,
-                telepon: document.getElementById('telepon').value,
-                email: document.getElementById('email').value,
-                alamat: document.getElementById('alamat').value,
-                kelurahan: document.getElementById('kelurahan').value,
-                kecamatan: document.getElementById('kecamatan').value,
-                kabupaten: document.getElementById('kabupaten').value,
-                kodePos: document.getElementById('kodePos').value,
-                jenisPajak: jenisPajak,
-                taxDetails: taxDetails,
-                createdAt: new Date().toISOString()
-            };
-            
-            wajibPajakData.push(wpData);
-            localStorage.setItem('wajibPajakData', JSON.stringify(wajibPajakData));
+            // Cek apakah mode edit atau tambah baru
+            if (editingWPId) {
+                // Mode Edit - Update data yang ada
+                const idx = wajibPajakData.findIndex(wp => wp.id === editingWPId);
+                if (idx !== -1) {
+                    wajibPajakData[idx] = {
+                        ...wajibPajakData[idx],
+                        npwpd: document.getElementById('npwpd').value,
+                        jenisWP: document.getElementById('jenisWP').value,
+                        nikNpwp: document.getElementById('nikNpwp').value,
+                        namaWP: document.getElementById('namaWP').value,
+                        namaUsaha: document.getElementById('namaUsaha').value,
+                        telepon: document.getElementById('telepon').value,
+                        email: document.getElementById('email').value,
+                        alamat: document.getElementById('alamat').value,
+                        kelurahan: document.getElementById('kelurahan').value,
+                        kecamatan: document.getElementById('kecamatan').value,
+                        kabupaten: document.getElementById('kabupaten').value,
+                        kodePos: document.getElementById('kodePos').value,
+                        jenisPajak: jenisPajak,
+                        taxDetails: taxDetails,
+                        updatedAt: new Date().toISOString()
+                    };
+                }
+                
+                localStorage.setItem('wajibPajakData', JSON.stringify(wajibPajakData));
+                
+                // Reset mode edit
+                editingWPId = null;
+                
+                // Kembalikan tombol submit
+                const submitBtn = document.querySelector('#wpForm button[type="submit"]');
+                submitBtn.innerHTML = '<i class="fas fa-save"></i> Simpan Data';
+                submitBtn.classList.remove('bg-yellow-600', 'hover:bg-yellow-700');
+                submitBtn.classList.add('bg-blue-600', 'hover:bg-blue-700');
+                
+                // Hapus tombol batal
+                const cancelBtn = document.getElementById('cancelEditBtn');
+                if (cancelBtn) cancelBtn.remove();
+                
+                showToast('Data wajib pajak berhasil diperbarui!');
+                
+            } else {
+                // Mode Tambah Baru
+                const wpData = {
+                    id: Date.now(),
+                    npwpd: document.getElementById('npwpd').value,
+                    jenisWP: document.getElementById('jenisWP').value,
+                    nikNpwp: document.getElementById('nikNpwp').value,
+                    namaWP: document.getElementById('namaWP').value,
+                    namaUsaha: document.getElementById('namaUsaha').value,
+                    telepon: document.getElementById('telepon').value,
+                    email: document.getElementById('email').value,
+                    alamat: document.getElementById('alamat').value,
+                    kelurahan: document.getElementById('kelurahan').value,
+                    kecamatan: document.getElementById('kecamatan').value,
+                    kabupaten: document.getElementById('kabupaten').value,
+                    kodePos: document.getElementById('kodePos').value,
+                    jenisPajak: jenisPajak,
+                    taxDetails: taxDetails,
+                    createdAt: new Date().toISOString()
+                };
+                
+                wajibPajakData.push(wpData);
+                localStorage.setItem('wajibPajakData', JSON.stringify(wajibPajakData));
+                
+                showToast('Data wajib pajak berhasil disimpan!');
+            }
             
             // Auto sync to cloud if enabled
             autoSyncAfterSave();
             updateLocalDataCount();
             
-            showToast('Data wajib pajak berhasil disimpan!');
             resetForm();
             updateDashboard();
         }
@@ -2649,8 +2695,9 @@
                             ${wp.taxDetails?.latitude ? `<button onclick="viewLocationOnMap(${wp.taxDetails.latitude}, ${wp.taxDetails.longitude}, '${wp.namaWP}')" class="px-2 py-1 bg-green-100 text-green-700 rounded text-xs"><i class="fas fa-map-marker-alt"></i> Lihat</button>` : '-'}
                         </td>
                         <td class="px-4 py-3 text-sm">
-                            <button onclick="viewDetail(${wp.id})" class="px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"><i class="fas fa-eye"></i></button>
-                            <button onclick="deleteWP(${wp.id})" class="px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600"><i class="fas fa-trash"></i></button>
+                            <button onclick="viewDetail(${wp.id})" class="px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600" title="Lihat Detail"><i class="fas fa-eye"></i></button>
+                            <button onclick="editWP(${wp.id})" class="px-2 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600" title="Edit"><i class="fas fa-edit"></i></button>
+                            <button onclick="deleteWP(${wp.id})" class="px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600" title="Hapus"><i class="fas fa-trash"></i></button>
                         </td>
                     </tr>
                 `).join('');
@@ -2798,6 +2845,103 @@
         }
 
         function closeModal() { document.getElementById('detailModal').classList.add('hidden'); }
+
+        // Variable untuk tracking mode edit
+        let editingWPId = null;
+
+        function editWP(id) {
+            const wp = wajibPajakData.find(w => w.id === id);
+            if (!wp) return;
+            
+            // Set mode edit
+            editingWPId = id;
+            
+            // Pindah ke halaman input
+            showSection('input');
+            
+            // Isi form dengan data yang ada
+            document.getElementById('npwpd').value = wp.npwpd;
+            document.getElementById('jenisWP').value = wp.jenisWP;
+            toggleJenisWP();
+            document.getElementById('nikNpwp').value = wp.nikNpwp;
+            document.getElementById('namaWP').value = wp.namaWP;
+            document.getElementById('namaUsaha').value = wp.namaUsaha || '';
+            document.getElementById('telepon').value = wp.telepon;
+            document.getElementById('email').value = wp.email || '';
+            document.getElementById('alamat').value = wp.alamat;
+            document.getElementById('kelurahan').value = wp.kelurahan;
+            document.getElementById('kecamatan').value = wp.kecamatan;
+            document.getElementById('kodePos').value = wp.kodePos || '';
+            document.getElementById('jenisPajak').value = wp.jenisPajak;
+            
+            // Tampilkan form pajak spesifik
+            showTaxFields();
+            
+            // Tunggu sebentar agar form ter-render, lalu isi data pajak
+            setTimeout(() => {
+                // Isi field-field pajak spesifik
+                if (wp.taxDetails) {
+                    Object.keys(wp.taxDetails).forEach(key => {
+                        const field = document.getElementById(`tax_${key}`);
+                        if (field) {
+                            if (field.type === 'checkbox') {
+                                field.checked = wp.taxDetails[key];
+                            } else if (typeof wp.taxDetails[key] === 'number' && (key.includes('njop') || key.includes('harga') || key.includes('tarif') || key.includes('nilai') || key.includes('omzet') || key.includes('biaya'))) {
+                                field.value = new Intl.NumberFormat('id-ID').format(wp.taxDetails[key]);
+                            } else {
+                                field.value = wp.taxDetails[key];
+                            }
+                        }
+                    });
+                    
+                    // Trigger perhitungan ulang jika ada
+                    if (wp.jenisPajak === 'pbb') {
+                        hitungNilaiTanah();
+                        hitungNilaiBangunan();
+                    } else if (wp.jenisPajak === 'bphtb') {
+                        updateNPOPTKP();
+                        hitungBPHTB();
+                    }
+                }
+            }, 100);
+            
+            // Ubah tombol submit
+            const submitBtn = document.querySelector('#wpForm button[type="submit"]');
+            submitBtn.innerHTML = '<i class="fas fa-save"></i> Update Data';
+            submitBtn.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+            submitBtn.classList.add('bg-yellow-600', 'hover:bg-yellow-700');
+            
+            // Tambahkan tombol batal edit
+            let cancelBtn = document.getElementById('cancelEditBtn');
+            if (!cancelBtn) {
+                cancelBtn = document.createElement('button');
+                cancelBtn.id = 'cancelEditBtn';
+                cancelBtn.type = 'button';
+                cancelBtn.className = 'px-6 py-3 bg-gray-500 text-white rounded-lg hover:bg-gray-600 flex items-center gap-2';
+                cancelBtn.innerHTML = '<i class="fas fa-times"></i> Batal Edit';
+                cancelBtn.onclick = cancelEdit;
+                submitBtn.parentNode.appendChild(cancelBtn);
+            }
+            
+            showToast('Mode edit aktif. Silakan ubah data yang diperlukan.');
+        }
+
+        function cancelEdit() {
+            editingWPId = null;
+            resetForm();
+            
+            // Kembalikan tombol submit ke semula
+            const submitBtn = document.querySelector('#wpForm button[type="submit"]');
+            submitBtn.innerHTML = '<i class="fas fa-save"></i> Simpan Data';
+            submitBtn.classList.remove('bg-yellow-600', 'hover:bg-yellow-700');
+            submitBtn.classList.add('bg-blue-600', 'hover:bg-blue-700');
+            
+            // Hapus tombol batal
+            const cancelBtn = document.getElementById('cancelEditBtn');
+            if (cancelBtn) cancelBtn.remove();
+            
+            showToast('Mode edit dibatalkan');
+        }
 
         function deleteWP(id) {
             if (confirm('Hapus data wajib pajak ini?')) {
