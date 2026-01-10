@@ -1632,3 +1632,77 @@ function hitungOpsenBBNKB() {
     if (bbnkbField) bbnkbField.value = 'Rp ' + new Intl.NumberFormat('id-ID').format(bbnkbPokok);
     if (opsenField) opsenField.value = 'Rp ' + new Intl.NumberFormat('id-ID').format(opsen);
 }
+
+// Replace the form input section in realisasiModal
+function showInputRealisasiModal(editId = null) {
+    document.getElementById('realisasiModal').classList.remove('hidden');
+    document.getElementById('realisasiForm').reset();
+    document.getElementById('editRealisasiId').value = '';
+    document.getElementById('realisasiModalTitle').textContent = 'Input Realisasi Pajak';
+    document.getElementById('inputCapaian').textContent = '0%';
+    document.getElementById('inputProgressBar').style.width = '0%';
+    
+    // Populate WP dropdown
+    populateWPDropdown();
+    
+    const now = new Date();
+    const todayStr = now.toISOString().split('T')[0];
+    document.getElementById('inputTanggal').value = todayStr;
+    document.getElementById('inputTanggalSetor').value = todayStr;
+    document.getElementById('inputTahun').value = now.getFullYear();
+    document.getElementById('inputBulan').value = now.getMonth() + 1;
+    
+    if (editId) {
+        const data = realisasiData.find(r => r.id === editId);
+        if (data) {
+            document.getElementById('editRealisasiId').value = data.id;
+            document.getElementById('realisasiModalTitle').textContent = 'Edit Realisasi';
+            document.getElementById('inputTanggal').value = data.tanggalInput || todayStr;
+            document.getElementById('inputTanggalSetor').value = data.tanggalSetor || todayStr;
+            document.getElementById('inputTahun').value = data.tahun;
+            document.getElementById('inputBulan').value = data.bulan;
+            document.getElementById('inputJenisPajak').value = data.jenisPajak;
+            document.getElementById('inputTarget').value = new Intl.NumberFormat('id-ID').format(data.target);
+            document.getElementById('inputPokok').value = new Intl.NumberFormat('id-ID').format(data.pokok || 0);
+            document.getElementById('inputTunggakan').value = new Intl.NumberFormat('id-ID').format(data.tunggakan || 0);
+            document.getElementById('inputMetodeBayar').value = data.metodeBayar || 'tunai';
+            document.getElementById('inputWajibPajak').value = data.wpId || '';
+            document.getElementById('inputJenisUsaha').value = data.jenisUsaha || '';
+            document.getElementById('inputKeterangan').value = data.keterangan || '';
+            
+            // Update calculated fields
+            const realisasiTotal = (data.pokok || 0) + (data.tunggakan || 0);
+            document.getElementById('inputRealisasiNominal').value = new Intl.NumberFormat('id-ID').format(realisasiTotal);
+            hitungCapaianInput();
+            
+            // If WP is selected, update jenis usaha
+            if (data.wpId) {
+                updateJenisUsaha(data.wpId);
+            }
+        }
+    }
+}
+
+function populateWPDropdown() {
+    const select = document.getElementById('inputWajibPajak');
+    select.innerHTML = '<option value="">Pilih Wajib Pajak</option>';
+    
+    wajibPajakData.forEach(wp => {
+        const option = document.createElement('option');
+        option.value = wp.id;
+        option.textContent = `${wp.npwpd} - ${wp.namaWP} (${taxTypes[wp.jenisPajak]?.name || wp.jenisPajak})`;
+        select.appendChild(option);
+    });
+}
+
+function updateJenisUsaha(wpId) {
+    const wp = wajibPajakData.find(w => w.id.toString() === wpId.toString());
+    const jenisUsahaField = document.getElementById('inputJenisUsaha');
+    const jenisPajakField = document.getElementById('inputJenisPajak');
+    
+    if (wp) {
+        jenisUsahaField.value = wp.jenisWP === 'badan' ? 'Badan Usaha' : 'Orang Pribadi';
+        jenisPajakField.value = wp.jenisPajak;
+        hitungCapaianInput();
+    }
+}
