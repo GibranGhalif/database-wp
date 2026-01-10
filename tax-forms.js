@@ -1706,3 +1706,464 @@ function updateJenisUsaha(wpId) {
         hitungCapaianInput();
     }
 }
+
+function updateRealisasiTotal() {
+    const pokok = parseRupiah(document.getElementById('inputPokok').value);
+    const tunggakan = parseRupiah(document.getElementById('inputTunggakan').value);
+    const total = pokok + tunggakan;
+    
+    document.getElementById('inputRealisasiNominal').value = new Intl.NumberFormat('id-ID').format(total);
+    hitungCapaianInput();
+}
+
+async function saveRealisasi(event) {
+    event.preventDefault();
+    
+    if (!firebaseConnected && currentUser?.role !== 'Admin') {
+        showToast('Harap hubungkan Firebase terlebih dahulu untuk menyimpan realisasi!');
+        return;
+    }
+    
+    const editId = document.getElementById('editRealisasiId').value;
+    const wpId = document.getElementById('inputWajibPajak').value;
+    const jenisUsaha = document.getElementById('inputJenisUsaha').value;
+    const tahun = parseInt(document.getElementById('inputTahun').value);
+    const bulan = parseInt(document.getElementById('inputBulan').value);
+    const tanggalSetor = document.getElementById('inputTanggalSetor').value;
+    const jenisPajak = document.getElementById('inputJenisPajak').value;
+    const metodeBayar = document.getElementById('inputMetodeBayar').value;
+    const target = parseRupiah(document.getElementById('inputTarget').value);
+    const pokok = parseRupiah(document.getElementById('inputPokok').value);
+    const tunggakan = parseRupiah(document.getElementById('inputTunggakan').value);
+    const realisasi = pokok + tunggakan;
+    const keterangan = document.getElementById('inputKeterangan').value;
+    
+    const wpData = wajibPajakData.find(wp => wp.id.toString() === wpId.toString());
+    
+    if (!wpData && wpId) {
+        showToast('Data wajib pajak tidak ditemukan!');
+        return;
+    }
+    
+    const realisasiData = {
+        wpId: wpId,
+        wpNpwp: wpData?.npwpd || '',
+        wpNama: wpData?.namaWP || '',
+        jenisUsaha: jenisUsaha,
+        tahun: tahun,
+        bulan: bulan,
+        tanggalInput: new Date().toISOString().split('T')[0],
+        tanggalSetor: tanggalSetor,
+        jenisPajak: jenisPajak,
+        metodeBayar: metodeBayar,
+        target: target,
+        pokok: pokok,
+        tunggakan: tunggakan,
+        realisasi: realisasi,
+        keterangan: keterangan,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        syncStatus: 'pending',
+        userId: currentUser?.id || 'unknown'
+    };
+    
+    try {
+        if (editId) {
+            // Update existing
+            realisasiData.id = editId;
+            
+            // Update lokal
+            const idx = realisasiDataLocal.findIndex(r => r.id === parseInt(editId));
+            if (idx !== -1) {
+                realisasiDataLocal[idx] = { ...realisasiDataLocal[idx], ...realisasiData };
+            }
+            
+            // Update ke Firebase jika terhubung
+            if (firebaseConnected) {
+                await firebaseDB.ref('realisasiPajak/' + editId).update(realisasiData);
+                addSyncLog(`✓ Realisasi ID ${editId} diupdate ke cloud`);
+            }
+            
+            showToast('Data realisasi berhasil diperbarui!');
+        } else {
+            // Add new
+            const newId = Date.now().toString();
+            realisasiData.id = newId;
+            
+            // Simpan lokal
+            realisasiDataLocal.push(realisasiData);
+            
+            // Simpan ke Firebase jika terhubung
+            if (firebaseConnected) {
+                await firebaseDB.ref('realisasiPajak/' + newId).set(realisasiData);
+                addSyncLog(`✓ Realisasi baru disimpan ke cloud (ID: ${newId})`);
+                
+                // Update status WP jika ada tunggakan
+                if (tunggakan > 0 && wpId) {
+                    const wpIdx = wajibPajakData.findIndex(wp => wp.id.toString() === wpId.toString());
+                    if (wpIdx !== -1) {
+                        wajibPajakData[wpIdx].kepatuhanWP = 'menunggak';
+                        wajibPajakData[wpIdx].totalTunggakan = (wajibPajakData[wpIdx].totalTunggakan || 0) + tunggakan;
+                        localStorage.setItem('wajibPajakData', JSON.stringify(wajibPajakData));
+                        
+                        // Sync WP update ke Firebase
+                        await firebaseDB.ref('wajibPajak/' + wpId).update({
+                            kepatuhanWP: 'menunggak',
+                            totalTunggakan: wajibPajakData[wpIdx].totalTunggakan
+                        });
+                    }
+                }
+            }
+            
+            showToast('Data realisasi berhasil disimpan!');
+        }
+        
+        // Simpan lokal
+        localStorage.setItem('realisasiData', JSON.stringify(realisasiDataLocal));
+        
+        closeRealisasiModal();
+        loadRealisasi();
+        
+    } catch (error) {
+        console.error('Error saving realisasi:', error);
+        showToast('Gagal menyimpan: ' + error.message);
+        
+        // Fallback: simpan ke localStorage saja
+        if (editId) {
+            const idx = realisasiDataLocal.findIndex(r => r.id === parseInt(editId));
+            if (idx !== -1) {
+                realisasiDataLocal[idx] = { ...realisasiDataLocal[idx], ...realisasiData, syncStatus: 'failed' };
+            }
+        } else {
+            realisasiData.id = Date.now();
+            realisasiData.syncStatus = 'failed';
+            realisasiDataLocal.push(realisasiData);
+        }
+        localStorage.setItem('realisasiData', JSON.stringify(realisasiDataLocal));
+        showToast('Data disimpan lokal (offline mode)');
+    }
+}
+
+function renderRealisasiTable(taxTotals, grandTarget, grandRealisasi) {
+    const tbody = document.getElementById('realisasiTableBody');
+    const tahun = parseInt(document.getElementById('realisasiTahun').value);
+    const bulan = document.getElementById('realisasiBulan').value;
+    let rows = '';
+    let no = 1;
+    
+    Object.keys(taxTypes).forEach(key => {
+        const data = taxTotals[key];
+        const selisih = data.realisasi - data.target;
+        const capaian = data.target > 0 ? (data.realisasi / data.target * 100) : 0;
+        
+        // Get all records for this tax type
+        let filteredRecords = realisasiDataLocal.filter(r => r.tahun === tahun && r.jenisPajak === key);
+        if (bulan) {
+            filteredRecords = filteredRecords.filter(r => r.bulan === parseInt(bulan));
+        }
+        
+        const latestRecord = filteredRecords.sort((a, b) => 
+            new Date(b.tanggalSetor || b.createdAt) - new Date(a.tanggalSetor || a.createdAt)
+        )[0];
+        
+        let tanggalDisplay = '-';
+        let wpDisplay = '-';
+        let metodeDisplay = '-';
+        let pokokDisplay = '0';
+        let tunggakanDisplay = '0';
+        
+        if (latestRecord) {
+            if (latestRecord.tanggalSetor) {
+                const tglSetor = new Date(latestRecord.tanggalSetor);
+                tanggalDisplay = tglSetor.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+            }
+            
+            wpDisplay = latestRecord.wpNama || '-';
+            metodeDisplay = latestRecord.metodeBayar || '-';
+            pokokDisplay = new Intl.NumberFormat('id-ID').format(latestRecord.pokok || 0);
+            tunggakanDisplay = new Intl.NumberFormat('id-ID').format(latestRecord.tunggakan || 0);
+        }
+        
+        let progressColor = 'bg-gray-200';
+        let textColor = 'text-gray-600';
+        if (capaian >= 100) { progressColor = 'bg-green-500'; textColor = 'text-green-600'; }
+        else if (capaian >= 75) { progressColor = 'bg-blue-500'; textColor = 'text-blue-600'; }
+        else if (capaian >= 50) { progressColor = 'bg-yellow-500'; textColor = 'text-yellow-600'; }
+        else if (capaian > 0) { progressColor = 'bg-red-500'; textColor = 'text-red-600'; }
+        
+        rows += `
+            <tr class="table-row border-b hover:bg-gray-50">
+                <td class="px-4 py-3 text-sm">${no++}</td>
+                <td class="px-4 py-3 text-sm">
+                    <div class="flex items-center gap-2">
+                        <i class="fas ${taxTypes[key].icon} text-${taxTypes[key].color}-500"></i>
+                        <div>
+                            <p class="font-medium">${taxTypes[key].name}</p>
+                            <p class="text-xs text-gray-500">${wpDisplay}</p>
+                        </div>
+                    </div>
+                </td>
+                <td class="px-4 py-3 text-sm">
+                    <span class="text-xs">${tanggalDisplay}</span>
+                    <br>
+                    <span class="text-xs text-gray-500">${metodeDisplay}</span>
+                </td>
+                <td class="px-4 py-3 text-sm text-right font-medium">${new Intl.NumberFormat('id-ID').format(data.target)}</td>
+                <td class="px-4 py-3 text-sm">
+                    <div class="text-right">
+                        <div>${pokokDisplay}</div>
+                        <div class="text-xs text-gray-500">+ ${tunggakanDisplay}</div>
+                    </div>
+                </td>
+                <td class="px-4 py-3 text-sm text-right font-bold">${new Intl.NumberFormat('id-ID').format(data.realisasi)}</td>
+                <td class="px-4 py-3 text-sm text-right ${selisih >= 0 ? 'text-green-600' : 'text-red-600'}">
+                    ${selisih >= 0 ? '+' : ''}${new Intl.NumberFormat('id-ID').format(selisih)}
+                </td>
+                <td class="px-4 py-3 text-sm text-center font-semibold ${textColor}">${capaian.toFixed(1)}%</td>
+                <td class="px-4 py-3">
+                    <div class="w-full bg-gray-200 rounded-full h-2">
+                        <div class="${progressColor} h-2 rounded-full transition-all duration-300" style="width: ${Math.min(capaian, 100)}%"></div>
+                    </div>
+                </td>
+                <td class="px-4 py-3 text-center">
+                    <button onclick="editRealisasiByTax('${key}')" class="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs hover:bg-blue-200 mr-1" title="Edit">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button onclick="deleteRealisasiByTax('${key}')" class="px-2 py-1 bg-red-100 text-red-700 rounded text-xs hover:bg-red-200" title="Hapus">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+    });
+    
+    tbody.innerHTML = rows;
+    
+    // Update footer
+    const grandCapaian = grandTarget > 0 ? (grandRealisasi / grandTarget * 100) : 0;
+    const grandSelisih = grandRealisasi - grandTarget;
+    document.getElementById('footerTarget').textContent = 'Rp ' + new Intl.NumberFormat('id-ID').format(grandTarget);
+    document.getElementById('footerRealisasi').textContent = 'Rp ' + new Intl.NumberFormat('id-ID').format(grandRealisasi);
+    document.getElementById('footerSelisih').textContent = (grandSelisih >= 0 ? '+' : '') + 'Rp ' + new Intl.NumberFormat('id-ID').format(grandSelisih);
+    document.getElementById('footerCapaian').textContent = grandCapaian.toFixed(1) + '%';
+}
+
+// Add to Firebase initialization
+async function initFirebaseRealisasi() {
+    if (!firebaseConnected) return;
+    
+    try {
+        // Listen for realtime updates
+        firebaseDB.ref('realisasiPajak').on('value', (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                const cloudData = Object.values(data);
+                
+                // Merge dengan data lokal
+                realisasiDataLocal = mergeRealisasiData(realisasiDataLocal, cloudData);
+                localStorage.setItem('realisasiData', JSON.stringify(realisasiDataLocal));
+                
+                // Update UI jika sedang di halaman realisasi
+                if (document.getElementById('section-realisasi').classList.contains('hidden') === false) {
+                    loadRealisasi();
+                }
+                
+                addSyncLog('⚡ Realtime sync realisasi: Data diperbarui');
+            }
+        });
+        
+        // Sync pending data saat koneksi kembali
+        const pendingData = realisasiDataLocal.filter(r => r.syncStatus === 'pending' || r.syncStatus === 'failed');
+        for (const data of pendingData) {
+            try {
+                await firebaseDB.ref('realisasiPajak/' + data.id).set(data);
+                data.syncStatus = 'synced';
+                addSyncLog(`✓ Realisasi ID ${data.id} disinkronkan`);
+            } catch (error) {
+                console.error('Sync failed for realisasi:', error);
+            }
+        }
+        
+        localStorage.setItem('realisasiData', JSON.stringify(realisasiDataLocal));
+        
+    } catch (error) {
+        console.error('Error init realisasi sync:', error);
+    }
+}
+
+function mergeRealisasiData(local, cloud) {
+    const merged = new Map();
+    
+    // Add local data
+    local.forEach(item => {
+        merged.set(item.id, item);
+    });
+    
+    // Merge with cloud data (newer wins)
+    cloud.forEach(item => {
+        const existing = merged.get(item.id);
+        if (!existing) {
+            merged.set(item.id, item);
+        } else {
+            const existingDate = new Date(existing.updatedAt || existing.createdAt);
+            const newDate = new Date(item.updatedAt || item.createdAt);
+            if (newDate > existingDate) {
+                merged.set(item.id, item);
+            }
+        }
+    });
+    
+    return Array.from(merged.values());
+}
+
+// Color mapping for different tax types
+const taxColorMapping = {
+    reklame: '#3b82f6',      // Blue
+    air_tanah: '#06b6d4',    // Cyan
+    sarang_walet: '#f59e0b', // Amber
+    mineral: '#10b981',      // Emerald
+    pbb: '#8b5cf6',          // Purple
+    bphtb: '#ec4899',        // Pink
+    pbjt_makanan: '#ef4444', // Red
+    pbjt_listrik: '#fbbf24', // Yellow
+    pbjt_hotel: '#0ea5e9',   // Sky Blue
+    pbjt_parkir: '#f97316',  // Orange
+    pbjt_hiburan: '#a855f7', // Violet
+    opsen_pkb: '#64748b',    // Slate
+    opsen_bbnkb: '#475569'   // Gray
+};
+
+function addWPMarkersToMap() {
+    wpMarkersLayer.clearLayers();
+    
+    wajibPajakData.forEach(wp => {
+        if (wp.taxDetails?.latitude && wp.taxDetails?.longitude) {
+            const color = taxColorMapping[wp.jenisPajak] || '#3b82f6';
+            const icon = L.divIcon({
+                className: 'custom-marker',
+                html: `<div style="background-color: ${color}; width: 20px; height: 20px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>`,
+                iconSize: [20, 20],
+                iconAnchor: [10, 10]
+            });
+            
+            const marker = L.marker([wp.taxDetails.latitude, wp.taxDetails.longitude], { icon: icon })
+                .bindPopup(`
+                    <div style="min-width: 200px;">
+                        <strong>${wp.namaWP}</strong><br>
+                        <small>${wp.npwpd}</small><br>
+                        <hr style="margin: 5px 0;">
+                        <div style="display: flex; align-items: center; gap: 5px; margin: 5px 0;">
+                            <div style="width: 12px; height: 12px; background-color: ${color}; border-radius: 2px;"></div>
+                            <span>${taxTypes[wp.jenisPajak]?.name || wp.jenisPajak}</span>
+                        </div>
+                        <div>Status: <span class="${wp.statusWP === 'aktif' ? 'text-green-600' : 'text-red-600'}">${wp.statusWP || 'aktif'}</span></div>
+                        <div>Kepatuhan: <span class="${wp.kepatuhanWP === 'patuh' ? 'text-green-600' : 'text-red-600'}">${wp.kepatuhanWP || 'patuh'}</span></div>
+                        <div>${wp.alamat}, ${wp.kelurahan}</div>
+                        ${wp.totalTunggakan > 0 ? `<div class="text-red-600 font-bold">Tunggakan: Rp ${new Intl.NumberFormat('id-ID').format(wp.totalTunggakan)}</div>` : ''}
+                        <button onclick="viewDetail(${wp.id})" class="w-full mt-2 px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600">
+                            <i class="fas fa-info-circle mr-1"></i> Detail
+                        </button>
+                    </div>
+                `);
+            
+            wpMarkersLayer.addLayer(marker);
+        }
+    });
+    
+    // Add legend for tax types
+    updateTaxLegend();
+}
+
+function updateTaxLegend() {
+    const legendContainer = document.getElementById('legendContainer');
+    let legendHtml = '<h4 class="text-sm font-semibold text-gray-700 mb-2">Legenda Jenis Pajak</h4>';
+    
+    Object.entries(taxColorMapping).forEach(([key, color]) => {
+        const count = wajibPajakData.filter(wp => wp.jenisPajak === key).length;
+        if (count > 0) {
+            legendHtml += `
+                <div class="legend-item flex items-center justify-between py-1">
+                    <div class="flex items-center gap-2">
+                        <div class="layer-color-box" style="background-color: ${color};"></div>
+                        <span class="text-xs text-gray-700">${taxTypes[key]?.name || key}</span>
+                    </div>
+                    <span class="text-xs text-gray-500">${count}</span>
+                </div>
+            `;
+        }
+    });
+    
+    legendContainer.innerHTML = legendHtml;
+}
+
+// Add at the beginning of the script with other global variables
+let realisasiDataLocal = JSON.parse(localStorage.getItem('realisasiData')) || [];
+
+// Update the loadRealisasi function to use realisasiDataLocal
+function loadRealisasi() {
+    // Set default tahun to current year if empty
+    const tahunInput = document.getElementById('realisasiTahun');
+    if (!tahunInput.value) {
+        tahunInput.value = new Date().getFullYear();
+    }
+    const tahun = parseInt(tahunInput.value);
+    const bulan = document.getElementById('realisasiBulan').value;
+    
+    // Filter data by year and optionally by month
+    let filteredData = realisasiDataLocal.filter(r => r.tahun === tahun);
+    if (bulan) {
+        filteredData = filteredData.filter(r => r.bulan === parseInt(bulan));
+    }
+    
+    // Rest of the function remains the same...
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    checkLoginStatus();
+    loadFirebaseConfig();
+    loadAutoSyncSettings();
+    updateLocalDataCount();
+    
+    // Initialize status indicators
+    updateStatusColor();
+    updateKepatuhanColor();
+    
+    // Initialize realisasi sync if Firebase is connected
+    if (firebaseConnected) {
+        initFirebaseRealisasi();
+    }
+});
+
+function connectToFirebase(config) {
+    try {
+        firebaseApp = firebase.initializeApp(config);
+        firebaseDB = firebase.database();
+        
+        // Test connection
+        firebaseDB.ref('.info/connected').on('value', (snapshot) => {
+            if (snapshot.val() === true) {
+                firebaseConnected = true;
+                updateFirebaseStatus(true);
+                updateCloudDataCount();
+                addSyncLog('✓ Terhubung ke Firebase');
+                
+                // Initialize realisasi sync
+                initFirebaseRealisasi();
+                
+                // Enable realtime if set
+                if (document.getElementById('realtimeSync')?.checked) {
+                    enableRealtimeSync();
+                }
+            } else {
+                firebaseConnected = false;
+                updateFirebaseStatus(false, 'Koneksi terputus');
+            }
+        });
+        
+    } catch (error) {
+        console.error('Firebase connection error:', error);
+        updateFirebaseStatus(false, error.message);
+    }
+}
+
+
