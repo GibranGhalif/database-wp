@@ -2197,4 +2197,59 @@ function importInitialData() {
         });
 }
 
+// 1. Perbaikan inisialisasi di DOMContentLoaded
+document.addEventListener('DOMContentLoaded', function() {
+    // PASTIKAN user default selalu ada
+    if (!localStorage.getItem('simpatdaUsers')) {
+        localStorage.setItem('simpatdaUsers', JSON.stringify(defaultUsers));
+    }
+    
+    // Load users dengan error handling
+    try {
+        users = JSON.parse(localStorage.getItem('simpatdaUsers'));
+        if (!Array.isArray(users)) users = defaultUsers;
+    } catch (e) {
+        users = defaultUsers;
+    }
+    
+    checkLoginStatus();
+    // ... kode lainnya
+});
+
+// 2. Perbaikan fungsi checkLoginStatus
+function checkLoginStatus() {
+    try {
+        const savedUser = localStorage.getItem('currentUser') || sessionStorage.getItem('currentUser');
+        if (savedUser && savedUser !== 'undefined') {
+            currentUser = JSON.parse(savedUser);
+            if (currentUser && currentUser.username) {
+                showMainApp();
+            }
+        }
+    } catch (error) {
+        console.error('Error parsing user data:', error);
+        localStorage.removeItem('currentUser');
+        sessionStorage.removeItem('currentUser');
+    }
+}
+
+// 3. Tambahkan tombol reset di footer login
+// Tambahkan di HTML login page:
+<div class="text-center mt-4">
+    <button onclick="resetLoginData()" class="text-xs text-blue-300 hover:text-white underline">
+        Reset Data Login (Debug)
+    </button>
+</div>
+
+// 4. Fungsi reset data
+function resetLoginData() {
+    if (confirm('Reset data login ke default?')) {
+        localStorage.setItem('simpatdaUsers', JSON.stringify(defaultUsers));
+        localStorage.removeItem('currentUser');
+        sessionStorage.removeItem('currentUser');
+        alert('Data direset! Gunakan: admin/admin123 atau operator/operator123');
+        location.reload();
+    }
+}
+
 
