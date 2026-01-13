@@ -2166,4 +2166,35 @@ function connectToFirebase(config) {
     }
 }
 
+function importInitialData() {
+    fetch('data-initial.json')
+        .then(response => response.json())
+        .then(data => {
+            // Import users
+            localStorage.setItem('simpatdaUsers', JSON.stringify(data.users));
+            
+            // Import wajib pajak
+            localStorage.setItem('wajibPajakData', JSON.stringify(data.wajibPajakData));
+            
+            // Import realisasi data
+            localStorage.setItem('realisasiData', JSON.stringify(data.realisasiData));
+            
+            // Import firebase config
+            localStorage.setItem('firebaseConfig', JSON.stringify(data.firebaseConfig));
+            
+            // Import auto sync settings
+            localStorage.setItem('autoSyncSettings', JSON.stringify(data.autoSyncSettings));
+            
+            // Import map layers
+            localStorage.setItem('mapLayers', JSON.stringify(data.mapLayers));
+            
+            showToast('Data awal berhasil diimpor!');
+            location.reload(); // Refresh untuk memuat data baru
+        })
+        .catch(error => {
+            console.error('Error importing data:', error);
+            showToast('Gagal mengimpor data awal');
+        });
+}
+
 
