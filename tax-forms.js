@@ -2233,15 +2233,8 @@ function checkLoginStatus() {
     }
 }
 
-// 3. Tambahkan tombol reset di footer login
-// Tambahkan di HTML login page:
-<div class="text-center mt-4">
-    <button onclick="resetLoginData()" class="text-xs text-blue-300 hover:text-white underline">
-        Reset Data Login (Debug)
-    </button>
-</div>
 
-// 4. Fungsi reset data
+// 3. Fungsi reset data
 function resetLoginData() {
     if (confirm('Reset data login ke default?')) {
         localStorage.setItem('simpatdaUsers', JSON.stringify(defaultUsers));
