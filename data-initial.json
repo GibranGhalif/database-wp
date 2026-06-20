@@ -1,1 +1,36 @@
-
+{
+  "users": [
+    {
+      "id": 1,
+      "fullname": "Administrator",
+      "username": "admin",
+      "password": "admin123",
+      "email": "admin@simpatda.local",
+      "role": "Admin",
+      "status": "active",
+      "phone": "081234567890"
+    },
+    {
+      "id": 2,
+      "fullname": "Operator Pajak",
+      "username": "operator",
+      "password": "operator123",
+      "email": "operator@simpatda.local",
+      "role": "Operator",
+      "status": "active",
+      "phone": "081234567891"
+    },
+    {
+      "id": 3,
+      "fullname": "Pengguna Viewer",
+      "username": "viewer",
+      "password": "viewer123",
+      "email": "viewer@simpatda.local",
+      "role": "Viewer",
+      "status": "active",
+      "phone": "081234567892"
+    }
+  ],
+  "taxpayers": [],
+  "mapLayers": []
+}
