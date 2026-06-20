@@ -1593,8 +1593,20 @@
         
         // ============= GLOBAL VARIABLES =============
         const defaultUsers = [
-            { id: 1, username: 'admin', password: 'admin123', name: 'Administrator', role: 'Admin', email: 'admin@sidrap.go.id', status: 'active', createdAt: '2024-01-01' },
-            { id: 2, username: 'operator', password: 'operator123', name: 'Operator Pajak', role: 'Operator', email: 'operator@sidrap.go.id', status: 'active', createdAt: '2024-01-01' }
+             {
+                id: 1,
+                username: 'admin',
+                password: 'admin123',
+                name: 'Administrator',
+                role: 'Admin'
+            },
+            {
+                id: 2,
+                username: 'operator',
+                password: 'operator123',
+                name: 'Operator Pajak',
+                role: 'Operator'
+            }
         ];
 
         let users = JSON.parse(localStorage.getItem('simpatdaUsers')) || defaultUsers;
